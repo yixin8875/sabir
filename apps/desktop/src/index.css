@@ -1,0 +1,302 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --animate-skeleton: skeleton 2s -1s infinite linear;
+    --animate-toast-success-odd: toast-success-odd 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+    --animate-toast-success-even: toast-success-even 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+    --animate-toast-error-odd: toast-error-odd 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+    --animate-toast-error-even: toast-error-even 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+    --animate-caret-blink: 1s ease-out infinite caret-blink;
+    --font-heading: 'Inter', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    --font-mono: 'Geist Mono Variable', 'Cascadia Mono', 'Consolas', monospace;
+    --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar: var(--sidebar);
+    --color-code-highlight: var(--code-highlight);
+    --code-foreground: var(--code-foreground);
+    --color-code: var(--code);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-ring: var(--ring);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-input: var(--input);
+    --color-foreground: var(--foreground);
+    --color-destructive: var(--destructive);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-border: var(--border);
+    --color-background: var(--background);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning: var(--warning);
+    --color-success-foreground: var(--success-foreground);
+    --color-success: var(--success);
+    --color-info-foreground: var(--info-foreground);
+    --color-info: var(--info);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+  @keyframes skeleton {
+  to {
+    background-position: -200% 0;
+        }
+    }
+  @keyframes toast-success-odd {
+  0% {
+    scale: 1;
+        }
+  30% {
+    scale: 1.025;
+        }
+  60% {
+    scale: 0.99;
+        }
+  100% {
+    scale: 1;
+        }
+    }
+  @keyframes toast-error-odd {
+  0% {
+    translate: 0 0;
+        }
+  25% {
+    translate: -3px 0;
+        }
+  50% {
+    translate: 3px 0;
+        }
+  75% {
+    translate: -3px 0;
+        }
+  100% {
+    translate: 0 0;
+        }
+    }
+  @keyframes toast-success-even {
+  0% {
+    scale: 1;
+        }
+  30% {
+    scale: 1.025;
+        }
+  60% {
+    scale: 0.99;
+        }
+  100% {
+    scale: 1;
+        }
+    }
+  @keyframes toast-error-even {
+  0% {
+    translate: 0 0;
+        }
+  25% {
+    translate: -3px 0;
+        }
+  50% {
+    translate: 3px 0;
+        }
+  75% {
+    translate: -3px 0;
+        }
+  100% {
+    translate: 0 0;
+        }
+    }
+  @keyframes caret-blink {
+  0%, 70%, to {
+    opacity: 1;
+        }
+  20%, 50% {
+    opacity: 0;
+        }
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Livetrans palette: warm paper light mode, ink dark mode, teal accent.
+   Structure and tokens are coss ui's; only values below are ours.
+--------------------------------------------------------------------------- */
+
+:root {
+    color-scheme: light;
+
+    --destructive-foreground: var(--color-red-700);
+    --info: var(--color-blue-500);
+    --info-foreground: var(--color-blue-700);
+    --success: var(--color-emerald-500);
+    --success-foreground: var(--color-emerald-700);
+    --warning: var(--color-amber-500);
+    --warning-foreground: var(--color-amber-700);
+
+    --accent: rgba(43, 111, 128, 0.10);
+    --accent-foreground: #2B6F80;
+    --background: #FBFAF7;
+    --border: rgba(23, 24, 28, 0.09);
+    --card: #FFFFFF;
+    --card-foreground: #17181C;
+    --destructive: var(--color-red-500);
+    --foreground: #17181C;
+    --input: rgba(23, 24, 28, 0.12);
+    --muted: rgba(23, 24, 28, 0.04);
+    --muted-foreground: color-mix(in srgb, #17181C 58%, #FBFAF7);
+    --popover: #FFFFFF;
+    --popover-foreground: #17181C;
+    --primary: #17181C;
+    --primary-foreground: #FBFAF7;
+    --ring: #2B6F80;
+    --secondary: rgba(23, 24, 28, 0.04);
+    --secondary-foreground: #17181C;
+
+    --chart-1: #2B6F80;
+    --chart-2: #7BA05B;
+    --chart-3: #C98B4B;
+    --chart-4: #6B7A8F;
+    --chart-5: #A66371;
+
+    --code: #FFFFFF;
+    --code-foreground: var(--foreground);
+    --code-highlight: rgba(23, 24, 28, 0.04);
+
+    --radius: 0.875rem;
+
+    --sidebar: #F5F3EE;
+    --sidebar-accent: rgba(43, 111, 128, 0.08);
+    --sidebar-accent-foreground: #2B6F80;
+    --sidebar-border: rgba(23, 24, 28, 0.07);
+    --sidebar-foreground: color-mix(in srgb, #17181C 64%, #F5F3EE);
+    --sidebar-primary: #17181C;
+    --sidebar-primary-foreground: #FBFAF7;
+    --sidebar-ring: #2B6F80;
+}
+
+.dark {
+    color-scheme: dark;
+
+    --destructive-foreground: var(--color-red-400);
+    --info: var(--color-blue-500);
+    --info-foreground: var(--color-blue-400);
+    --success: var(--color-emerald-500);
+    --success-foreground: var(--color-emerald-400);
+    --warning: var(--color-amber-500);
+    --warning-foreground: var(--color-amber-400);
+
+    --accent: rgba(143, 208, 221, 0.10);
+    --accent-foreground: #8FD0DD;
+    --background: #121316;
+    --border: rgba(232, 233, 236, 0.08);
+    --card: #1C1E23;
+    --card-foreground: #E8E9EC;
+    --destructive: color-mix(in srgb, var(--color-red-500) 90%, #E8E9EC);
+    --foreground: #E8E9EC;
+    --input: rgba(232, 233, 236, 0.10);
+    --muted: rgba(232, 233, 236, 0.05);
+    --muted-foreground: color-mix(in srgb, #E8E9EC 55%, #121316);
+    --popover: #1C1E23;
+    --popover-foreground: #E8E9EC;
+    --primary: #E8E9EC;
+    --primary-foreground: #17181C;
+    --ring: #8FD0DD;
+    --secondary: rgba(232, 233, 236, 0.06);
+    --secondary-foreground: #E8E9EC;
+
+    --chart-1: #8FD0DD;
+    --chart-2: #A7C98B;
+    --chart-3: #E0AE72;
+    --chart-4: #93A1B5;
+    --chart-5: #D293A2;
+
+    --code: #1C1E23;
+    --code-foreground: var(--foreground);
+    --code-highlight: rgba(232, 233, 236, 0.06);
+
+    --sidebar: #16181C;
+    --sidebar-accent: rgba(143, 208, 221, 0.10);
+    --sidebar-accent-foreground: #8FD0DD;
+    --sidebar-border: rgba(232, 233, 236, 0.07);
+    --sidebar-foreground: color-mix(in srgb, #E8E9EC 60%, #16181C);
+    --sidebar-primary: #E8E9EC;
+    --sidebar-primary-foreground: #17181C;
+    --sidebar-ring: #8FD0DD;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  html {
+    @apply font-sans;
+    /* Keep light/dark in sync with the app's own toggle, not OS only. */
+    scrollbar-gutter: stable;
+    }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Desktop app chrome: no rubber-band scroll, no text selection on chrome. */
+    overscroll-behavior: none;
+    }
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+    }
+  /* Speech text: slightly looser leading and tabular timestamps. */
+  .caption-text {
+    text-wrap: pretty;
+    word-break: break-word;
+    }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    }
+}
+
+/* coss uses portalled popovers/menus; keep stacking predictable per surface. */
+.lt-surface {
+  isolation: isolate;
+}
+
+/* The recording indicator window is transparent; only its pill paints. */
+body.lt-float,
+body.lt-float #root {
+  background: transparent !important;
+}
+
+body.lt-float {
+  overflow: hidden;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

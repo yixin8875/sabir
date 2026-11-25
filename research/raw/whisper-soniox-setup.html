@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="zh-Hans"><head><meta charset="utf-8"><script>
+      // Apply the theme chosen by hand before the page paints; without one,
+      // CSS follows the system.
+      try {
+        const theme = localStorage.getItem("theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script><meta name="viewport" content="width=device-width, initial-scale=1"><title>在 Liveglot 中配置 Whisper 或 Soniox</title><meta name="description" content="配置本机 whisper.cpp 或 Soniox 云端识别，以及 OpenAI 兼容翻译。含常见故障，并说明尚未提供的选项（Apple 原生识别）。"><link rel="canonical" href="https://liveglot.app/zh-hans/whisper-soniox-setup/"><link rel="alternate" hreflang="en" href="https://liveglot.app/whisper-soniox-setup/"><link rel="alternate" hreflang="zh-Hans" href="https://liveglot.app/zh-hans/whisper-soniox-setup/"><link rel="alternate" hreflang="ja" href="https://liveglot.app/ja/whisper-soniox-setup/"><link rel="alternate" hreflang="ko" href="https://liveglot.app/ko/whisper-soniox-setup/"><link rel="alternate" hreflang="zh-Hant" href="https://liveglot.app/zh-hant/whisper-soniox-setup/"><link rel="alternate" hreflang="x-default" href="https://liveglot.app/whisper-soniox-setup/"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)"><meta property="og:type" content="website"><meta property="og:site_name" content="Liveglot"><meta property="og:title" content="在 Liveglot 中配置 Whisper 或 Soniox"><meta property="og:description" content="配置本机 whisper.cpp 或 Soniox 云端识别，以及 OpenAI 兼容翻译。含常见故障，并说明尚未提供的选项（Apple 原生识别）。"><meta property="og:url" content="https://liveglot.app/zh-hans/whisper-soniox-setup/"><meta property="og:image" content="https://liveglot.app/screenshots/app-zh-hans.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="在 Liveglot 中配置 Whisper 或 Soniox"><meta name="twitter:description" content="配置本机 whisper.cpp 或 Soniox 云端识别，以及 OpenAI 兼容翻译。含常见故障，并说明尚未提供的选项（Apple 原生识别）。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Liveglot","applicationCategory":"MultimediaApplication","operatingSystem":"macOS 14 or later (Apple silicon), Windows 10 or 11 (64-bit)","url":"https://liveglot.app","downloadUrl":"https://download.liveglot.app/Liveglot.dmg","offers":{"@type":"Offer","price":"19.99","priceCurrency":"USD","url":"https://liveglot.app","description":"One-time purchase $19.99; activate on up to two computers (Mac or Windows); 7-day free trial"},"publisher":{"@type":"Organization","name":"Liveglot","url":"https://liveglot.app","email":"hello@liveglot.app","logo":"https://liveglot.app/icon.svg"}}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","name":"在 Liveglot 中配置 Whisper 或 Soniox","itemListElement":[{"@type":"ListItem","position":1,"name":"Liveglot","item":"https://liveglot.app/zh-hans/"},{"@type":"ListItem","position":2,"name":"Whisper 与 Soniox 设置","item":"https://liveglot.app/zh-hans/whisper-soniox-setup/"}]}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","name":"在 Liveglot 中配置 Whisper 或 Soniox","mainEntity":[{"@type":"Question","name":"必须同时准备 Whisper 和 Soniox 吗？","acceptedAnswer":{"@type":"Answer","text":"不用。识别引擎二选一即可。除非你只记录原文不翻译，否则翻译仍需要自己的 OpenAI 兼容 Key。"}}]}</script><script type="module" src="/_astro/PostHog.astro_astro_type_script_index_0_lang.D9kseY2Y.js"></script><style>.lead[data-astro-cid-sqsk6st2]{margin-bottom:1.5em;font-size:1.1rem}.guide-faq[data-astro-cid-sqsk6st2] details[data-astro-cid-sqsk6st2]{border-bottom:1px solid var(--border);margin:.75em 0;padding:.6em 0}.guide-faq[data-astro-cid-sqsk6st2] summary[data-astro-cid-sqsk6st2]{cursor:pointer;font-weight:600}.guide-faq[data-astro-cid-sqsk6st2] details[data-astro-cid-sqsk6st2] p[data-astro-cid-sqsk6st2]{color:var(--muted);margin:.6em 0 0}.guide-cta[data-astro-cid-sqsk6st2]{margin-top:2.5em}.guide-cross[data-astro-cid-sqsk6st2]{margin-top:1.5em}.guide-home[data-astro-cid-sqsk6st2]{margin-top:1.25em}
+</style><link rel="stylesheet" href="/_astro/Base.CDhtY4Xz.css"></head><body><div class="site-chrome"><div class="promo-banner-wrap" hidden data-promo-window data-promo-start="1795161900000" data-promo-end="1796313600000"><a class="promo-banner" href="https://buy.stripe.com/eVq7sM2JiarM9lG8L8dAk05?prefilled_promo_code=BF2026" aria-label="黑五优惠：使用 BF2026 享五折"><span class="promo-banner-inner"><span class="promo-deal-badge">黑五特惠</span><span class="promo-banner-text">买断五折 · 截止 12/3 23:59 UTC+8<span class="promo-banner-prices" aria-hidden="true"> · <s>$19.99</s> <strong>$9.99</strong></span><span class="promo-banner-code"> · BF2026</span></span><span class="promo-banner-cta">查看优惠 →</span></span></a></div><header class="site-header"><div class="container header-row"><a class="brand" href="/zh-hans/"><img src="/icon.svg" alt="" width="28" height="28"><span>Liveglot</span></a><nav class="nav" aria-label="Main"><a href="/zh-hans/#features">功能</a><a href="/zh-hans/how-it-works/">使用方式</a><a href="/zh-hans/#pricing">价格</a><a href="/zh-hans/faq/">常见问题</a><a href="/zh-hans/guide/">上手教程</a></nav><div class="header-actions"><details class="lang"><summary aria-label="语言"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-9 9h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"></path></svg><span>简体中文</span></summary><ul><li><a href="/whisper-soniox-setup/" hreflang="en" lang="en" data-lang="en">English</a></li><li><a href="/zh-hans/whisper-soniox-setup/" hreflang="zh-hans" lang="zh-hans" data-lang="zh-hans" aria-current="true">简体中文</a></li><li><a href="/ja/whisper-soniox-setup/" hreflang="ja" lang="ja" data-lang="ja">日本語</a></li><li><a href="/ko/whisper-soniox-setup/" hreflang="ko" lang="ko" data-lang="ko">한국어</a></li><li><a href="/zh-hant/whisper-soniox-setup/" hreflang="zh-hant" lang="zh-hant" data-lang="zh-hant">繁體中文</a></li></ul></details><button class="theme-toggle" type="button" data-theme-toggle data-labels="{&quot;system&quot;:&quot;主题：跟随系统&quot;,&quot;light&quot;:&quot;主题：浅色&quot;,&quot;dark&quot;:&quot;主题：深色&quot;}" aria-label="主题：跟随系统" title="主题：跟随系统"><svg class="icon-system" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 5h16v11H4Z M9 20h6 M12 16v4"></path></svg><svg class="icon-light" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"></path></svg><svg class="icon-dark" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"></path></svg></button><a class="button button-small" href="https://download.liveglot.app/Liveglot.dmg" data-download-auto data-win-href="https://download.liveglot.app/Liveglot-Setup.exe">下载</a></div></div></header><script type="module">var e=[`system`,`light`,`dark`],t=document.querySelector(`[data-theme-toggle]`),n=JSON.parse(t?.dataset.labels??`{}`),r=()=>document.documentElement.dataset.theme??`system`,i=()=>{let e=n[r()]??``;t?.setAttribute(`aria-label`,e),t?.setAttribute(`title`,e)};i(),t?.addEventListener(`click`,()=>{let t=e[(e.indexOf(r())+1)%e.length];t===`system`?(delete document.documentElement.dataset.theme,localStorage.removeItem(`theme`)):(document.documentElement.dataset.theme=t,localStorage.setItem(`theme`,t)),i()}),document.querySelectorAll(`[data-lang]`).forEach(e=>e.addEventListener(`click`,()=>{document.cookie=`lang=${e.dataset.lang}; path=/; max-age=31536000; samesite=lax`}));var a=navigator.userAgentData?.platform??navigator.platform??``;(/win/i.test(a)||/windows/i.test(navigator.userAgent))&&(document.querySelectorAll(`[data-download-auto]`).forEach(e=>{e.dataset.winHref&&(e.href=e.dataset.winHref)}),document.querySelectorAll(`[data-os-btn="win"]`).forEach(e=>{e.classList.remove(`button-ghost`);let t=e.parentElement,n=t?.querySelector(`[data-os-btn="mac"]`);n&&(n.classList.add(`button-ghost`),t?.insertBefore(e,n))}));</script></div><main><article class="section" data-astro-cid-sqsk6st2><div class="container narrow prose" data-astro-cid-sqsk6st2><h1 data-astro-cid-sqsk6st2>Whisper 与 Soniox 设置</h1><p class="lead muted" data-astro-cid-sqsk6st2>识别与翻译分开配置。每场录音只用一种识别引擎；翻译始终走你控制的 OpenAI 兼容接口。</p><section data-astro-cid-sqsk6st2><h2 data-astro-cid-sqsk6st2>本地 Whisper（本机）</h2><p data-astro-cid-sqsk6st2>安装 whisper-server（例如通过 whisper.cpp / Homebrew），并指定 ggml/gguf 模型。应用会扫描 MacWhisper、whisper.cpp 等常见目录，也可以浏览选择文件。</p><p data-astro-cid-sqsk6st2>每次开始录音时模型可能需要加载一段时间。界面会显示加载中、已就绪、正在识别。请为所选模型大小预留足够内存。</p><ul data-astro-cid-sqsk6st2><li data-astro-cid-sqsk6st2>需要可用的 whisper-server 路径</li><li data-astro-cid-sqsk6st2>需要兼容的本地模型文件</li><li data-astro-cid-sqsk6st2>选择该引擎时，识别用音频留在 Mac</li></ul></section><section data-astro-cid-sqsk6st2><h2 data-astro-cid-sqsk6st2>Soniox（云端）</h2><p data-astro-cid-sqsk6st2>在设置 → 识别中选择 Soniox，粘贴 API Key（存入钥匙串），选择区域（美国 / 欧洲 / 日本 / 印度）与模型（推荐 Real-time V6；V5 已弃用），然后点「测试连接」。</p><p data-astro-cid-sqsk6st2>该场录音的音频会发往 Soniox。区域与 Key 不匹配时测试会失败——先核对端点，不要盲目重试。</p></section><section data-astro-cid-sqsk6st2><h2 data-astro-cid-sqsk6st2>翻译（OpenAI 兼容）</h2><p data-astro-cid-sqsk6st2>在「翻译与聊天」中填写 Base URL、模型名与 API Key。路径按你填写的内容拼接，服务要求 /v1 时请写进地址。可保存多套配置，聊天可复用翻译配置或另选。</p><p data-astro-cid-sqsk6st2>「测试连接」只验证当前填写内容。保存后对后续句子的翻译请求立即生效。</p></section><section data-astro-cid-sqsk6st2><h2 data-astro-cid-sqsk6st2>排障</h2><p data-astro-cid-sqsk6st2>缺少 whisper-server 或模型路径时界面会给出明确错误。Soniox 鉴权或 HTTP 错误会表现为连接失败。屏幕录制权限问题通常要在打开开关后完全退出应用；同一 bundle ID 的多个副本会让 TCC 混乱。</p><ul data-astro-cid-sqsk6st2><li data-astro-cid-sqsk6st2>设置里尚不提供 Apple 原生识别</li><li data-astro-cid-sqsk6st2>Windows 本地 Whisper 随安装包提供（Vulkan 显卡加速，可回退 AVX2 CPU）；模型路径与 Soniox Key 仍在设置中配置</li></ul></section><section class="guide-faq" data-astro-cid-sqsk6st2><h2 data-astro-cid-sqsk6st2>常见问题</h2><details data-astro-cid-sqsk6st2><summary data-astro-cid-sqsk6st2>必须同时准备 Whisper 和 Soniox 吗？</summary><p data-astro-cid-sqsk6st2>不用。识别引擎二选一即可。除非你只记录原文不翻译，否则翻译仍需要自己的 OpenAI 兼容 Key。</p></details></section><p class="guide-cta" data-astro-cid-sqsk6st2><a class="button" href="https://download.liveglot.app/Liveglot.dmg" data-os-btn="mac" data-astro-cid-sqsk6st2>下载 macOS 版</a><a class="button button-ghost" href="https://download.liveglot.app/Liveglot-Setup.exe" data-os-btn="win" style="margin-left: 0.6em;" data-astro-cid-sqsk6st2>下载 Windows 版</a></p><p class="guide-cross muted small" data-astro-cid-sqsk6st2><a href="/zh-hans/guide/" data-astro-cid-sqsk6st2>上手教程</a> · <a href="/zh-hans/faq/" data-astro-cid-sqsk6st2>常见问题</a> · <a href="/zh-hans/download/" data-astro-cid-sqsk6st2>下载</a></p><p class="guide-home" data-astro-cid-sqsk6st2><a href="/zh-hans/" data-astro-cid-sqsk6st2>← Liveglot</a></p></div></article></main><footer class="site-footer"><div class="container footer-row"><div class="brand"><img src="/icon.svg" alt="" width="22" height="22"><span>Liveglot</span></div><nav class="footer-links" aria-label="Guides"><a href="/zh-hans/guide/">上手教程</a><a href="/zh-hans/download/">下载</a><a href="/zh-hans/how-it-works/">使用方式</a><a href="/zh-hans/mac-live-captions/">Mac 直播字幕</a><a href="/zh-hans/whisper-soniox-setup/">Whisper / Soniox</a><a href="/zh-hans/privacy-by-design/">隐私设计</a><a href="/zh-hans/faq/">常见问题</a><a href="/zh-hans/changelog/">更新日志</a><a href="/zh-hans/privacy/">隐私</a><a href="/cdn-cgi/l/email-protection#1e767b7272715e7277687b7972716a307f6e6e">联系</a></nav><p class="muted">© 2026 Liveglot. 保留所有权利。</p></div></footer><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  (function () {
+    var syncChromeOffset = function () {
+      var chrome = document.querySelector(".site-chrome");
+      if (!chrome) return;
+      document.documentElement.style.setProperty(
+        "--chrome-offset",
+        chrome.offsetHeight + "px",
+      );
+    };
+
+    var probe = document.querySelector("[data-promo-start][data-promo-end]");
+    if (probe) {
+      var start = Number(probe.getAttribute("data-promo-start"));
+      var end = Number(probe.getAttribute("data-promo-end"));
+      var now = Date.now();
+      if (now >= start && now < end) {
+        document.documentElement.dataset.promoActive = "true";
+        document.querySelectorAll("[data-promo-window]").forEach(function (el) {
+          el.hidden = false;
+        });
+        document.querySelectorAll("[data-promo-regular]").forEach(function (el) {
+          el.hidden = true;
+        });
+        document.querySelectorAll("[data-promo-sale]").forEach(function (el) {
+          el.hidden = false;
+        });
+        document.querySelectorAll("[data-promo-buy]").forEach(function (el) {
+          var href = el.getAttribute("data-promo-buy-href");
+          var label = el.getAttribute("data-promo-buy-label");
+          if (href) el.setAttribute("href", href);
+          if (label) el.textContent = label;
+        });
+        document.querySelectorAll("[data-promo-copy]").forEach(function (btn) {
+          var code = btn.getAttribute("data-promo-code") || "BF2026";
+          var copied = btn.getAttribute("data-copied") || "Copied";
+          var failed = btn.getAttribute("data-copy-failed") || "";
+          var idle = btn.textContent;
+          btn.addEventListener("click", function () {
+            var flash = function (label) {
+              if (!label) return;
+              btn.textContent = label;
+              try {
+                btn.focus({ preventScroll: true });
+              } catch (e) {
+                btn.focus();
+              }
+              window.setTimeout(function () {
+                btn.textContent = idle;
+              }, 1600);
+            };
+            var ok = function () {
+              flash(copied);
+            };
+            var fail = function () {
+              flash(failed);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(code).then(ok).catch(fail);
+            } else {
+              fail();
+            }
+          });
+        });
+      }
+    }
+
+    syncChromeOffset();
+    window.addEventListener("resize", syncChromeOffset);
+  })();
+</script></body></html>

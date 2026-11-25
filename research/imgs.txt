@@ -1,0 +1,5 @@
+/_astro/PostHog.astro_astro_type_script_index_0_lang.D9kseY2Y.js
+/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js
+/icon.svg
+/screenshots/app-zh-hans-dark.webp
+/screenshots/app-zh-hans.webp

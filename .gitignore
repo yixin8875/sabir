@@ -1,0 +1,16 @@
+node_modules/
+dist/
+target/
+*.log
+
+# Model weights and local model folders are downloaded locally, never committed.
+apps/desktop/models/
+
+# Vendored prebuilt runtimes (see README for the download steps).
+apps/desktop/src-tauri/vendor/sherpa/*.tar.bz2
+apps/desktop/src-tauri/vendor/sherpa/*.dll
+apps/desktop/src-tauri/vendor/onnxruntime/*.dll
+apps/desktop/src-tauri/vendor/onnxruntime/*.so
+apps/desktop/src-tauri/vendor/onnxruntime/*.dylib
+
+.claude/settings.local.json

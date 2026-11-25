@@ -1,0 +1,501 @@
+mod asr_models;
+mod ask;
+mod audio;
+pub mod cli;
+mod download;
+mod engine;
+mod environment;
+mod general;
+mod glossary;
+mod plugins;
+mod store;
+mod translate;
+mod voice;
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use asr_models::{
+    cancel_asr_download, delete_asr_model, download_asr_model, get_asr_settings, list_asr_models,
+    save_asr_settings, AsrService,
+};
+use audio::{AudioDevices, AudioProcess, AudioSettings};
+use engine::{Engine, EngineEvent};
+use general::GeneralSettings;
+use glossary::{Glossary, GlossaryPreset};
+use serde::Serialize;
+use plugins::{PluginService, PluginSettings, PluginSettingsView};
+use store::{SearchHit, SessionMeta, SessionStore, StoredSegment, EXPORT_FORMATS};
+use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, State};
+use translate::{
+    cancel_translate_download, clear_provider_api_key, delete_translate_model,
+    download_translate_model, get_translate_settings, retranslate_segment, save_translate_settings,
+    test_translation, TranslateService,
+};
+use voice::{
+    cancel_voice_download, delete_voice_model, download_voice_model, get_voice_settings,
+    save_voice_settings, synthesize_voice, VoiceService,
+};
+
+#[tauri::command]
+fn start_listening(
+    app: AppHandle,
+    engine: State<'_, Engine>,
+    channel: Channel<EngineEvent>,
+) -> Result<(), String> {
+    engine.start(&app, channel)
+}
+
+#[tauri::command]
+fn stop_listening(engine: State<'_, Engine>) {
+    engine.stop();
+}
+
+#[tauri::command]
+fn pause_listening(engine: State<'_, Engine>) {
+    engine.pause();
+}
+
+#[tauri::command]
+fn resume_listening(engine: State<'_, Engine>) {
+    engine.resume();
+}
+
+#[tauri::command]
+fn current_session(engine: State<'_, Engine>) -> Option<i64> {
+    engine.current_session()
+}
+
+/// Export the current (or a given) session to the configured directory, or
+/// `Documents\Livetrans` when the user has not picked one.
+#[tauri::command]
+fn export_session(
+    app: AppHandle,
+    engine: State<'_, Engine>,
+    session_id: Option<i64>,
+    format: String,
+) -> Result<String, String> {
+    let format = format.trim().to_lowercase();
+    if !EXPORT_FORMATS.contains(&format.as_str()) {
+        return Err(if general::is_chinese() {
+            format!("不支持的导出格式：{format}")
+        } else {
+            format!("Unsupported export format: {format}")
+        });
+    }
+    let store = engine.store();
+    let id = session_id
+        .or_else(|| engine.current_session())
+        .or_else(|| store.latest_session())
+        .ok_or_else(|| {
+            general::pick(
+                "还没有可导出的会话；先听一段再导出。",
+                "Nothing to export yet; listen to something first.",
+            )
+            .to_string()
+        })?;
+    let meta = store
+        .meta(id)
+        .ok_or_else(|| general::pick("找不到这场会话", "Session not found").to_string())?;
+    let slug = meta
+        .started_at
+        .chars()
+        .take(16)
+        .collect::<String>()
+        .replace(' ', "-")
+        .replace(':', "");
+    let settings = general::load(&general::settings_path(&app));
+    let dir = match settings.export_dir {
+        Some(dir) if !dir.trim().is_empty() => std::path::PathBuf::from(dir),
+        _ => general::default_export_dir(&app)?,
+    };
+    let dest = dir.join(format!("livetrans-{slug}.{format}"));
+    let path = store.export(id, &format, &dest)?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
+fn rename_session(
+    engine: State<'_, Engine>,
+    session_id: i64,
+    title: String,
+) -> Result<SessionMeta, String> {
+    engine.store().rename_session(session_id, &title)
+}
+
+#[tauri::command]
+fn get_general_settings(app: AppHandle) -> GeneralSettings {
+    general::load(&general::settings_path(&app))
+}
+
+#[tauri::command]
+fn save_general_settings(
+    app: AppHandle,
+    settings: GeneralSettings,
+) -> Result<GeneralSettings, String> {
+    let settings = settings.normalized();
+    if let Some(dir) = settings.export_dir.as_deref() {
+        std::fs::create_dir_all(dir)
+            .map_err(|err| {
+                if general::is_chinese() {
+                    format!("无法创建导出目录：{err}")
+                } else {
+                    format!("Could not create the export folder: {err}")
+                }
+            })?;
+    }
+    general::save(&general::settings_path(&app), &settings)?;
+    general::set_locale(&settings.locale);
+    Ok(settings)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionDetail {
+    meta: SessionMeta,
+    segments: Vec<StoredSegment>,
+}
+
+#[tauri::command]
+fn list_sessions(
+    engine: State<'_, Engine>,
+    query: Option<String>,
+    limit: Option<u32>,
+) -> Vec<SessionMeta> {
+    engine
+        .store()
+        .list_sessions(query.as_deref().unwrap_or(""), limit.unwrap_or(80) as usize)
+}
+
+#[tauri::command]
+fn session_detail(engine: State<'_, Engine>, session_id: i64) -> Result<SessionDetail, String> {
+    let store = engine.store();
+    let meta = store
+        .meta(session_id)
+        .ok_or_else(|| "找不到这场会话".to_string())?;
+    Ok(SessionDetail {
+        segments: store.segments(session_id),
+        meta,
+    })
+}
+
+#[tauri::command]
+fn delete_session(engine: State<'_, Engine>, session_id: i64) -> Result<(), String> {
+    engine.store().delete_session(session_id)
+}
+
+#[tauri::command]
+fn get_audio_settings(app: AppHandle) -> Result<AudioSettings, String> {
+    Ok(audio::load(&audio_settings_path(&app)?))
+}
+
+#[tauri::command]
+fn save_audio_settings(
+    app: AppHandle,
+    settings: AudioSettings,
+) -> Result<AudioSettings, String> {
+    audio::save(&audio_settings_path(&app)?, &settings)
+}
+
+#[tauri::command]
+fn list_audio_devices() -> Result<AudioDevices, String> {
+    audio::list_devices()
+}
+
+#[tauri::command]
+fn list_audio_processes() -> Result<Vec<AudioProcess>, String> {
+    audio::list_processes()
+}
+
+#[tauri::command]
+fn get_glossary(translate: State<'_, Arc<TranslateService>>) -> Glossary {
+    translate.glossary()
+}
+
+#[tauri::command]
+fn save_glossary(
+    translate: State<'_, Arc<TranslateService>>,
+    glossary: Glossary,
+) -> Result<Glossary, String> {
+    translate.save_glossary(glossary)
+}
+
+/// Write the presets currently shown in settings to a shared JSON file.
+#[tauri::command]
+fn export_glossary(path: String, glossary: Glossary) -> Result<String, String> {
+    glossary::export_portable(Path::new(&path), &glossary)
+        .map(|path| path.display().to_string())
+}
+
+/// Read a shared glossary file; the result has fresh ids to merge into the
+/// glossary being edited.
+#[tauri::command]
+fn import_glossary(path: String) -> Result<Vec<GlossaryPreset>, String> {
+    glossary::import_portable(Path::new(&path))
+}
+
+/// Write configured provider profiles without keys, consent or ids.
+#[tauri::command]
+fn export_provider_profiles(
+    path: String,
+    profiles: Vec<translate::ProviderProfile>,
+) -> Result<String, String> {
+    translate::export_provider_profiles(Path::new(&path), &profiles)
+        .map(|path| path.display().to_string())
+}
+
+/// Read a shared provider-profile file; profiles come back without ids,
+/// consent or keys.
+#[tauri::command]
+fn import_provider_profiles(path: String) -> Result<Vec<translate::ProviderProfile>, String> {
+    translate::import_provider_profiles(Path::new(&path))
+}
+
+/// Every transcript line across sessions that matches `query`, for cross-
+/// session search without a model.
+#[tauri::command]
+fn search_transcripts(engine: State<'_, Engine>, query: String) -> Vec<ask::CrossLine> {
+    ask::search_across(&engine.store(), &query)
+}
+
+#[tauri::command]
+fn ask_question(
+    translate: State<'_, Arc<TranslateService>>,
+    question: String,
+    lines: Vec<ask::AskLine>,
+    channel: Channel<ask::AskEvent>,
+) {
+    let service = Arc::clone(&translate);
+    std::thread::spawn(move || ask::ask(&service, &question, &lines, channel));
+}
+
+/// Ask across every session: Rust retrieves the relevant lines, streams them
+/// back first, then answers from them.
+#[tauri::command]
+fn ask_across_sessions(
+    engine: State<'_, Engine>,
+    translate: State<'_, Arc<TranslateService>>,
+    question: String,
+    channel: Channel<ask::CrossAskEvent>,
+) {
+    let store = engine.store();
+    let service = Arc::clone(&translate);
+    std::thread::spawn(move || ask::ask_across(&store, &service, &question, channel));
+}
+
+#[tauri::command]
+fn probe_environment(translate: State<'_, Arc<TranslateService>>) -> environment::Environment {
+    environment::probe(&translate.local_base_url())
+}
+
+#[tauri::command]
+fn set_always_on_top(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "找不到主窗口".to_string())?;
+    window
+        .set_always_on_top(enabled)
+        .map_err(|err| format!("置顶失败：{err}"))?;
+    Ok(enabled)
+}
+
+/// Show or hide the floating recording pill. While visible it sits at the
+/// bottom-right corner of the main window, so it stays near the captions.
+#[tauri::command]
+fn set_float_visible(app: AppHandle, visible: bool) -> Result<(), String> {
+    let float = app
+        .get_webview_window("float")
+        .ok_or_else(|| "找不到浮标窗口".to_string())?;
+    if visible {
+        if let Some(main) = app.get_webview_window("main") {
+            if let (Ok(position), Ok(size), Ok(float_size)) =
+                (main.outer_position(), main.outer_size(), float.outer_size())
+            {
+                let margin = 24i32;
+                let x = position.x + size.width as i32 - float_size.width as i32 - margin;
+                let y = position.y + size.height as i32 - float_size.height as i32 - margin;
+                let _ = float.set_position(tauri::PhysicalPosition::new(x.max(0), y.max(0)));
+            }
+        }
+        float.show().map_err(|err| format!("显示浮标失败：{err}"))?;
+        let _ = float.set_always_on_top(true);
+    } else {
+        float.hide().map_err(|err| format!("隐藏浮标失败：{err}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn focus_main_window(app: AppHandle) -> Result<(), String> {
+    let main = app
+        .get_webview_window("main")
+        .ok_or_else(|| "找不到主窗口".to_string())?;
+    let _ = main.unminimize();
+    main.show().map_err(|err| format!("显示主窗口失败：{err}"))?;
+    main.set_focus()
+        .map_err(|err| format!("聚焦主窗口失败：{err}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_plugin_settings(plugins: State<'_, Arc<PluginService>>) -> PluginSettingsView {
+    plugins.view()
+}
+
+#[tauri::command]
+fn save_plugin_settings(
+    plugins: State<'_, Arc<PluginService>>,
+    settings: PluginSettings,
+) -> Result<PluginSettingsView, String> {
+    plugins.save(settings)
+}
+
+/// Run a plugin once with a sample sentence and report what came back.
+#[tauri::command]
+async fn test_plugin(command: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || plugins::probe(&command))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
+/// Full-text search across local sessions (the library's search panel).
+#[tauri::command]
+fn search_library(
+    engine: State<'_, Engine>,
+    query: String,
+    limit: Option<u32>,
+    session_id: Option<i64>,
+) -> Vec<SearchHit> {
+    engine
+        .store()
+        .search_fulltext(&query, limit.unwrap_or(40) as usize, session_id)
+}
+
+fn audio_settings_path(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_config_dir()
+        .map(|dir| dir.join("audio.json"))
+        .map_err(|err| format!("找不到设置目录：{err}"))
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            start_listening,
+            stop_listening,
+            pause_listening,
+            resume_listening,
+            current_session,
+            export_session,
+            list_sessions,
+            session_detail,
+            delete_session,
+            rename_session,
+            get_general_settings,
+            save_general_settings,
+            get_audio_settings,
+            save_audio_settings,
+            list_audio_devices,
+            list_audio_processes,
+            get_glossary,
+            save_glossary,
+            export_glossary,
+            import_glossary,
+            export_provider_profiles,
+            import_provider_profiles,
+            search_transcripts,
+            search_library,
+            get_plugin_settings,
+            save_plugin_settings,
+            test_plugin,
+            ask_question,
+            ask_across_sessions,
+            probe_environment,
+            set_always_on_top,
+            set_float_visible,
+            focus_main_window,
+            get_translate_settings,
+            save_translate_settings,
+            clear_provider_api_key,
+            test_translation,
+            retranslate_segment,
+            download_translate_model,
+            cancel_translate_download,
+            delete_translate_model,
+            get_asr_settings,
+            save_asr_settings,
+            list_asr_models,
+            download_asr_model,
+            cancel_asr_download,
+            delete_asr_model,
+            get_voice_settings,
+            save_voice_settings,
+            download_voice_model,
+            cancel_voice_download,
+            delete_voice_model,
+            synthesize_voice
+        ])
+        .setup(|app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+
+            // Load the interface language before any service can emit text or
+            // write session rows, so labels are consistent from the first run.
+            let _ = general::load(&general::settings_path(app.handle()));
+
+            let asr = AsrService::start(app.handle());
+            app.manage(asr);
+
+            let database = app
+                .path()
+                .app_data_dir()
+                .map(|dir| dir.join("livetrans.db"))
+                .unwrap_or_else(|_| PathBuf::from("livetrans.db"));
+            let store = match SessionStore::open(&database) {
+                Ok(store) => store,
+                Err(err) => {
+                    log::error!("session store unavailable at {}: {err}", database.display());
+                    let fallback = std::env::temp_dir().join("livetrans.db");
+                    SessionStore::open(&fallback)?
+                }
+            };
+            let store = Arc::new(store);
+
+            let translate = TranslateService::start(app.handle());
+            let plugins = Arc::new(PluginService::start(app.handle()));
+            app.manage(Engine::new(
+                Arc::clone(&translate),
+                Arc::clone(&store),
+                Arc::clone(&plugins),
+            ));
+            app.manage(translate);
+            app.manage(store);
+            app.manage(plugins);
+            app.manage(Arc::new(VoiceService::start(app.handle())));
+            Ok(())
+        })
+        // The floating pill is a second window; without this, closing the main
+        // window would leave a hidden app running instead of quitting.
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    // Stop the pipeline first so the open session gets its
+                    // `ended_at` instead of staying "in progress" forever.
+                    if let Some(engine) = window.app_handle().try_state::<Engine>() {
+                        engine.stop();
+                    }
+                    window.app_handle().exit(0);
+                }
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("error while building tauri application");
+}

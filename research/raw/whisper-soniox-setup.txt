@@ -1,0 +1,32 @@
+在 Liveglot 中配置 Whisper 或 Soniox 黑五特惠 买断五折 · 截止 12/3 23:59 UTC+8 · $19.99 $9.99 · BF2026 查看优惠 → 
+ Liveglot 功能 使用方式 价格 常见问题 上手教程 简体中文 English 
+ 简体中文 
+ 日本語 
+ 한국어 
+ 繁體中文 
+ 下载 
+ Whisper 与 Soniox 设置
+ 识别与翻译分开配置。每场录音只用一种识别引擎；翻译始终走你控制的 OpenAI 兼容接口。
+ 本地 Whisper（本机）
+ 安装 whisper-server（例如通过 whisper.cpp / Homebrew），并指定 ggml/gguf 模型。应用会扫描 MacWhisper、whisper.cpp 等常见目录，也可以浏览选择文件。
+ 每次开始录音时模型可能需要加载一段时间。界面会显示加载中、已就绪、正在识别。请为所选模型大小预留足够内存。
+ 需要可用的 whisper-server 路径
+ 需要兼容的本地模型文件
+ 选择该引擎时，识别用音频留在 Mac
+ Soniox（云端）
+ 在设置 → 识别中选择 Soniox，粘贴 API Key（存入钥匙串），选择区域（美国 / 欧洲 / 日本 / 印度）与模型（推荐 Real-time V6；V5 已弃用），然后点「测试连接」。
+ 该场录音的音频会发往 Soniox。区域与 Key 不匹配时测试会失败——先核对端点，不要盲目重试。
+ 翻译（OpenAI 兼容）
+ 在「翻译与聊天」中填写 Base URL、模型名与 API Key。路径按你填写的内容拼接，服务要求 /v1 时请写进地址。可保存多套配置，聊天可复用翻译配置或另选。
+ 「测试连接」只验证当前填写内容。保存后对后续句子的翻译请求立即生效。
+ 排障
+ 缺少 whisper-server 或模型路径时界面会给出明确错误。Soniox 鉴权或 HTTP 错误会表现为连接失败。屏幕录制权限问题通常要在打开开关后完全退出应用；同一 bundle ID 的多个副本会让 TCC 混乱。
+ 设置里尚不提供 Apple 原生识别
+ Windows 本地 Whisper 随安装包提供（Vulkan 显卡加速，可回退 AVX2 CPU）；模型路径与 Soniox Key 仍在设置中配置
+ 常见问题
+ 必须同时准备 Whisper 和 Soniox 吗？ 不用。识别引擎二选一即可。除非你只记录原文不翻译，否则翻译仍需要自己的 OpenAI 兼容 Key。
+ 下载 macOS 版 下载 Windows 版 
+ 上手教程 · 常见问题 · 下载 
+ ← Liveglot 
+ Liveglot 
+ 上手教程 下载 使用方式 Mac 直播字幕 Whisper / Soniox 隐私设计 常见问题 更新日志 隐私 联系 © 2026 Liveglot. 保留所有权利。

@@ -1,0 +1,63 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Livetrans",
+  "version": "0.1.0",
+  "identifier": "app.livetrans.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5180",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Livetrans",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 880,
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      },
+      {
+        "label": "float",
+        "title": "Livetrans 录音浮标",
+        "url": "index.html?view=float",
+        "width": 300,
+        "height": 68,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "vendor/onnxruntime/onnxruntime.dll": "onnxruntime.dll",
+      "vendor/sherpa/sherpa-onnx-c-api.dll": "sherpa-onnx-c-api.dll",
+      "vendor/sherpa/sherpa-onnx-cxx-api.dll": "sherpa-onnx-cxx-api.dll",
+      "vendor/vad/silero_vad.onnx": "silero_vad.onnx"
+    },
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+常见问题 — Liveglot 黑五特惠 买断五折 · 截止 12/3 23:59 UTC+8 · $19.99 $9.99 · BF2026 查看优惠 → 
+ Liveglot 功能 使用方式 价格 常见问题 上手教程 简体中文 English 
+ 简体中文 
+ 日本語 
+ 한국어 
+ 繁體中文 
+ 下载 
+ 常见问题
+ 基于当前 macOS 与 Windows 客户端的短答。需要逐步操作时请看对应专题页。
+ 产品范围
+ Liveglot 是原生桌面应用，在 macOS 与 Windows 上为系统音频提供实时字幕：本地 Whisper 或 Soniox 转写，可选 OpenAI 兼容翻译。没有公开发布的移动客户端。
+ 常见问题
+ 支持哪些 Mac？ macOS 14 Sonoma 或更新。以 Apple 芯片为主；Intel Mac 不是当前产品叙事重点。
+ 有 Windows 或 Linux 版吗？ 有。Windows 10 / Windows 11（64 位）可在下载页获取 Liveglot-Setup.exe（与 macOS 的 DMG 并列）。Windows 本地 Whisper 含 Vulkan 显卡加速，并可回退 AVX2 CPU。没有 Linux 版。
+ 能用 Apple 自带语音识别吗？ 还不能。设置里的识别是 Whisper（本地）或 Soniox（云端）。Apple 原生 STT 不是当前界面中的可选项。
+ 必须同时装 Whisper 和 Soniox 吗？ 不用。识别引擎二选一。Whisper 需要本机 whisper-server 与模型；Soniox 需要 API Key 与区域/模型。
+ 密钥和场次存在哪？ API Key 保存在 macOS 钥匙串或 Windows 凭据管理器。场次 Markdown 写在你选择的目录（默认 Documents 下）。没有 Liveglot 字幕账号。
+ 授权怎么运作？ 结账走 Stripe。一次性授权通过 license.liveglot.app 用硬件哈希与设备名最多激活两台电脑（Mac 或 Windows 任意组合）。试用开始时间会记录，清空本机凭据不会悄悄重置试用。
+ 网站用 cookie 跟踪我吗？ 营销站使用 PostHog，localStorage 持久化，关闭 session replay 与 autocapture，并排除隐私页。这仍是页面分析，不是「零采集」。详见隐私说明与隐私政策。
+ 如何求助？ 发信至 [email protected] ，并说明系统版本（macOS 或 Windows）以及用的是 Whisper 还是 Soniox。
+ 下载 macOS 版 下载 Windows 版 
+ 上手教程 · 常见问题 · 下载 
+ ← Liveglot 
+ Liveglot 
+ 上手教程 下载 使用方式 Mac 直播字幕 Whisper / Soniox 隐私设计 常见问题 更新日志 隐私 联系 © 2026 Liveglot. 保留所有权利。

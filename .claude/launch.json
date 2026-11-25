@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "desktop-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "apps/desktop", "dev"],
+      "port": 5180
+    },
+    {
+      "name": "desktop-web-attach",
+      "url": "http://localhost:5180"
+    },
+    {
+      "name": "livetrans-5182",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "apps/desktop", "exec", "vite", "--port", "5182", "--strictPort"],
+      "port": 5182
+    }
+  ]
+}
