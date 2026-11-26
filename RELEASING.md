@@ -4,9 +4,10 @@
 
 ## 一次性准备
 
-1. **仓库地址**：把 `apps/desktop/src-tauri/tauri.conf.json` 里的
-   `https://github.com/OWNER/sabir/releases/latest/download/latest.json`
-   改成实际仓库（`OWNER` 换成 GitHub 用户名或组织名）。自动更新只认这个地址。
+1. **仓库地址**：本仓库的 `origin` 已设为 `https://github.com/yixin8875/sabir`，
+   `apps/desktop/src-tauri/tauri.conf.json` 里的更新源也指向
+   `https://github.com/yixin8875/sabir/releases/latest/download/latest.json`。
+   fork、改名或迁移仓库后，这两处要一起替换；自动更新只认这个地址。
 2. **签名密钥**：仓库外已生成私钥 `C:\Users\86176\.livetrans\updater.key`
    （无密码）。这份私钥**不要提交、不要贴进 issue**；丢失后旧版本无法验证新更新，只能让用户手动重装。建议离线备份一份。
    在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
