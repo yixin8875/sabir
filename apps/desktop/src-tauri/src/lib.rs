@@ -2,6 +2,7 @@ mod asr_models;
 mod ask;
 mod audio;
 pub mod cli;
+mod diagnostics;
 mod download;
 mod engine;
 mod environment;
@@ -10,6 +11,7 @@ mod glossary;
 mod plugins;
 mod store;
 mod translate;
+mod tray;
 mod voice;
 
 use std::path::{Path, PathBuf};
@@ -372,6 +374,16 @@ fn search_library(
         .search_fulltext(&query, limit.unwrap_or(40) as usize, session_id)
 }
 
+/// Write a support bundle the user can attach to a bug report.
+#[tauri::command]
+fn export_diagnostics(
+    app: AppHandle,
+    engine: State<'_, Engine>,
+    path: String,
+) -> Result<String, String> {
+    diagnostics::export(&app, engine.store().health(), Path::new(&path))
+}
+
 fn audio_settings_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_config_dir()
@@ -383,6 +395,8 @@ fn audio_settings_path(app: &AppHandle) -> Result<PathBuf, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             start_listening,
             stop_listening,
@@ -408,6 +422,7 @@ pub fn run() {
             import_provider_profiles,
             search_transcripts,
             search_library,
+            export_diagnostics,
             get_plugin_settings,
             save_plugin_settings,
             test_plugin,
@@ -439,17 +454,20 @@ pub fn run() {
             synthesize_voice
         ])
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // Release builds keep a small rotating log too: the diagnostics
+            // bundle attaches its tail without asking the user to reproduce.
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                    .max_file_size(4 * 1024 * 1024)
+                    .build(),
+            )?;
 
             // Load the interface language before any service can emit text or
             // write session rows, so labels are consistent from the first run.
             let _ = general::load(&general::settings_path(app.handle()));
+            tray::build(app.handle())?;
 
             let asr = AsrService::start(app.handle());
             app.manage(asr);
@@ -482,15 +500,22 @@ pub fn run() {
             app.manage(Arc::new(VoiceService::start(app.handle())));
             Ok(())
         })
-        // The floating pill is a second window; without this, closing the main
-        // window would leave a hidden app running instead of quitting.
+        // The floating pill is a second window; closing the main window either
+        // hides it in the tray or quits the whole app.
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     // Stop the pipeline first so the open session gets its
                     // `ended_at` instead of staying "in progress" forever.
                     if let Some(engine) = window.app_handle().try_state::<Engine>() {
                         engine.stop();
+                    }
+                    let settings =
+                        general::load(&general::settings_path(window.app_handle()));
+                    if settings.minimize_to_tray {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        return;
                     }
                     window.app_handle().exit(0);
                 }

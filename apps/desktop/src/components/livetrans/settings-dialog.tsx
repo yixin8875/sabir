@@ -1,6 +1,7 @@
 import { tr } from '@/lib/i18n'
 import { useEffect, useRef, useState } from 'react'
 import {
+  Info,
   Languages,
   Mic,
   NotebookText,
@@ -27,6 +28,7 @@ import {
   type SettingsPanelHandle,
 } from './recognition-settings'
 import { PluginSettings } from './plugin-settings'
+import { AboutSettings } from './about-settings'
 import { TranslationSettings } from './translation-settings'
 import { VoiceSettings } from './voice-settings'
 import { cn } from '@/lib/utils'
@@ -38,6 +40,7 @@ export type SettingsSection =
   | 'glossary'
   | 'voice'
   | 'plugins'
+  | 'about'
 
 const SECTIONS: { id: SettingsSection; label: string; icon: typeof Mic }[] = [
   { id: 'general', label: tr("通用"), icon: Settings2 },
@@ -46,6 +49,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: typeof Mic }[] = [
   { id: 'glossary', label: tr("场景与术语"), icon: NotebookText },
   { id: 'voice', label: tr("配音"), icon: Volume2 },
   { id: 'plugins', label: tr("插件"), icon: Plug },
+  { id: 'about', label: tr("关于与诊断"), icon: Info },
 ]
 
 const TITLES: Record<SettingsSection, string> = {
@@ -55,6 +59,7 @@ const TITLES: Record<SettingsSection, string> = {
   glossary: tr("场景与术语"),
   voice: tr("配音"),
   plugins: tr("插件"),
+  about: tr("关于与诊断"),
 }
 
 type SettingsDialogProps = {
@@ -331,6 +336,9 @@ export function SettingsDialog({
                   )
                 }
               />
+            </div>
+            <div className={section === 'about' ? 'block' : 'hidden'}>
+              <AboutSettings />
             </div>
           </div>
 

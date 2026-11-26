@@ -445,6 +445,7 @@ That tells us the buyers are still in control.
 - **Linux 依赖**：WebKitGTK 4.1、libappindicator、librsvg；deb 声明依赖；AppImage 打包；Flatpak 后期提供 manifest（注意音频 portal）。
 - **体积**：安装包约 10–40MB（含 sherpa 运行时库，不含模型）；模型另下。
 - **合规产物**：`THIRD_PARTY_NOTICES.md`（Tauri、coss ui、sherpa-onnx、whisper.cpp 等）、模型许可证清单、SBOM。
+- **已落地（Windows，2026-11-26）**：`tauri-plugin-updater` + `tauri-plugin-process` 接入，`bundle.createUpdaterArtifacts` 打开，公钥内嵌 `tauri.conf.json` 的 `plugins.updater.pubkey`；私钥在仓库外 `%USERPROFILE%\.livetrans\updater.key`（无密码），CI 通过 `TAURI_SIGNING_PRIVATE_KEY` 注入。`.github/workflows/release.yml` 在 `windows-latest` 上依次跑 `scripts/fetch-vendor.ps1`、版本一致性检查、标签/版本比对、`cargo test --lib`，再用 `tauri-action` 构建 `--bundles nsis,msi` 并上传草稿 Release 与 `latest.json`。版本用 `scripts/set-version.mjs` 同步 `package.json` / `tauri.conf.json` / `Cargo.toml`。更新检查只在「设置 → 关于与诊断」手动触发，不做后台轮询。托盘与关闭到托盘见 `tray.rs` / `lib.rs`；日志常开（Info、单文件轮转、上限 4MB）供诊断包截取尾部。当前只发 Windows 产物，macOS/Linux 矩阵等端口完成后再加。
 
 ## 2.11 技术栈与仓库结构
 
@@ -1040,6 +1041,17 @@ pnpm dlx shadcn@latest add @coss/ui
 - **CLI**（`cli.rs` + `bin/livetrans.rs`）：Cargo feature `cli` + `required-features`，默认应用构建不受影响。`LIVETRANS_DB` 可覆盖数据库；子命令 `list`（表格或 `--json`）、`search`（每行一个 `SearchHit` JSON）、`show --format md|jsonl|srt`、`export`（默认 `livetrans-<id>.<fmt>`）、`stream [--follow]`（打印或每 250ms 跟随最新场次，处理截断）。
 - **已验证**：`cargo test --lib` 45 通过 / 6 忽略（新增全文检索双语命中、场次过滤、2 字回退、删除清理、旧库重建；插件设置归一化/拒绝空命令启用、事件流内容、无插件不改写、Windows 回声脚本 probe）；`cargo check --all-targets --features cli`、`tsc -b`、`pnpm build` 通过。CLI 用临时 SQLite 夹具逐条跑过 list/search/show/stream/export/help。浏览器预览实测：插件页开关在命令为空时禁用、填命令后可开、测试命令返回预览提示、保存后重开仍在、空命令 + 启用被拒；中文「灰度」与英文 `kubernetes` 都能出结果并点开对应句；切 English 后两页文案完整。英文词典提取 359 条、缺失 0。
 - **限制**：trigram 每词至少 3 字符，短词只能 `LIKE` 扫行；没有向量/同义词/模糊匹配，片段是截取而非原文高亮；`search_transcripts`（跨场次问答）仍走旧的 LIKE 检索，两套并存。插件单命令、每场一个进程，改写只作用于译文且等待上限 400ms，超时/空输出/与原译文相同就不改，脚本崩溃后本场不再改写；stdout 必须 UTF-8，非 JSON 与 stderr 只进日志。浏览器预览不运行本机脚本。CLI 只读，不含写入/删除。
+
+### 托盘、自动更新、诊断包与发布工程（2026-11-26）
+
+对应功能全景第 16 条与发布准备，一次补齐四块：
+
+- **托盘与关闭到托盘**（`tray.rs`、`lib.rs`、`general.rs`）：`TrayIconBuilder::with_id("main-tray")` 用应用图标，tooltip `Livetrans`，菜单「显示主窗口 / 设置… / 退出 Livetrans」，`show_menu_on_left_click(false)` 让左键单击直接恢复窗口；恢复时 `show` + `unminimize` + `set_focus`。`WindowEvent::CloseRequested` 先取 `Engine` 并 `stop()`（隐私：不在后台继续采集），再读 `general.json` 的 `minimizeToTray`：为真时 `api.prevent_close()` 并 `window.hide()`，为假时 `app.exit(0)`。`GeneralSettings` 新增 `#[serde(default = "default_minimize_to_tray")] minimize_to_tray: bool`，默认 `true`，手写 `Default` 保留“文件缺失时默认开启”；前端 `general-settings.tsx` 在「显示录音浮标」下方加同名开关，`app-settings.ts` 归一化 `minimizeToTray !== false`。
+- **自动更新**（`updater.ts`、`about-settings.tsx`、`Cargo.toml`、`capabilities/default.json`、`tauri.conf.json`）：Rust 侧注册 `tauri_plugin_updater::Builder` 与 `tauri_plugin_process`；JS 侧动态 import `@tauri-apps/plugin-updater` / `plugin-process`，`checkForAppUpdate()` 返回 `{version, currentVersion, date?, body?}`，`installAppUpdate(onProgress)` 把 Started/Progress 事件换算成 0–1 进度，`relaunchApp()` 负责重启。`updatesSupported()` 在浏览器预览返回 false，按钮禁用并显示说明。设置新增「关于与诊断」页（`Info` 图标），显示版本、检查/下载/安装/重启四态与错误文案。公钥来自 `tauri signer generate`，私钥不进仓库；端点仍为 `OWNER` 占位符，发布前替换。
+- **诊断包**（`diagnostics.rs`、`store.rs`、`diagnostics.ts`）：`export_diagnostics` 命令把 `StoreHealth {sessions, segments, latest, userVersion, integrity}`、版本、OS/架构、配置路径、模型安装探测（`models/translate/en-zh`、`models/tts/kokoro-zh-en-v1.1` 下是否存在 `.onnx`）写成 `summary.json`；`SETTINGS` 复制 general/audio/asr/settings(translate)/voice/plugins 六份配置并递归删除 `key/apikey/secret/token/password/consent/consentat/command` 字段；日志每个文件只取尾部 256KB；打包用 `zip` crate 的 Deflated。明确不含字幕、音频、SQLite、术语表、事件流与 API Key，zip 内附 `README.txt` 说明。前端用 `tauri-plugin-dialog` 的 `save` 选路径（默认 `livetrans-diagnostics-YYYY-MM-DD-HH-mm-ss.zip`），预览模式返回一段合成 JSON 而不读本机数据。
+- **发布工程**（`.github/workflows/release.yml`、`scripts/`、`RELEASING.md`）：`fetch-vendor.ps1` 从 k2-fsa 与 NuGet 取 sherpa-onnx 两个 DLL、`onnxruntime.dll` 与 `silero_vad.onnx`；`set-version.mjs` 写/校验三处版本；workflow 在 `v*` 标签或手动触发时检查三处版本一致、标签等于版本、跑单测，再由 `tauri-action` 用 `pnpm tauri` 构建 NSIS/MSI 与签名更新文件，创建草稿 Release。`RELEASING.md` 记录一次性准备（改 `OWNER`、配置两个签名 secret、备份私钥）、发布命令、发布后自检与回滚方式。仓库用 Git 管理：`main` 基线，功能分支 `feature/tray-updater-diagnostics`。
+- **已验证**：`cargo check --offline`、`cargo check --all-targets --features cli --offline` 通过；`cargo test --lib --offline` 46 通过 / 6 忽略（新增 `general` 托盘字段往返、`diagnostics` 脱敏保留布局）；`tsc -b` 通过；`node scripts/set-version.mjs --check` 三处一致；下载 URL 用 HEAD 实测（sherpa 与 Silero 200；ONNX Runtime 改走 NuGet）。
+- **限制**：更新只手动检查，无启动自检、后台轮询或静默安装；安装后必须重启。`OWNER` 未替换前检查更新会 404。托盘图标不随录音状态变化；关闭到托盘会中断当前录音。诊断包不含用户内容，但日志可能带会话标题/路径等元数据；脱敏按字段名，未来新增的敏感字段名需同步 `is_secret_key`。CI 只构建 Windows；正式发布前需先跑通一次标签流程并做安装冒烟，`TAURI_SIGNING_PRIVATE_KEY` 未配置时 workflow 会失败。
 
 ## 4.2 MVP 任务拆解
 

@@ -1,0 +1,102 @@
+# Builds Windows installers and the signed updater feed on a version tag.
+#
+#   git tag v0.1.1 && git push origin v0.1.1
+#
+# The tag must match the version in apps/desktop/src-tauri/tauri.conf.json;
+# scripts/set-version.mjs keeps package.json, tauri.conf.json and Cargo.toml
+# in lockstep. See RELEASING.md for the one-time setup.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      # sherpa-onnx DLLs, onnxruntime.dll and silero_vad.onnx are gitignored;
+      # this recreates README steps 2/4/5 on the runner.
+      - name: Fetch vendored runtimes
+        shell: pwsh
+        run: ./scripts/fetch-vendor.ps1
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify version fields agree
+        run: node scripts/set-version.mjs --check
+
+      - name: Verify tag matches the app version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:EVENT_NAME -ne 'push') {
+            Write-Host 'manual run: skipping tag check'
+            exit 0
+          }
+          $tag = $env:REF_NAME.TrimStart('v')
+          $version = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ($tag -ne $version) {
+            throw "tag $env:REF_NAME does not match app version $version (run scripts/set-version.mjs first)"
+          }
+
+      - name: Rust unit tests
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --lib
+
+      # tauri-action runs `pnpm tauri build`, uploads the NSIS/MSI installers,
+      # their .sig files and latest.json to a draft GitHub Release, then the
+      # release is published by hand after a smoke test.
+      - name: Build and stage release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          tagName: v__VERSION__
+          releaseName: Livetrans v__VERSION__
+          releaseBody: |
+            Windows 安装包（NSIS `.exe` / WiX `.msi`）与自动更新文件。
+
+            - 安装包不含识别、翻译、配音模型，首次使用请在设置里下载。
+            - 若在 Windows 上看到 SmartScreen 提示，请核对下载页面的校验值；当前安装包尚未做代码签名。
+            - 从旧版本升级时，应用会在「设置 → 关于与诊断」检查更新，安装包由 Minisign 签名校验。
+          releaseDraft: true
+          prerelease: false
+          args: --bundles nsis,msi

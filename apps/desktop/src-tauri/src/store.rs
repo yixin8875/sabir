@@ -113,6 +113,18 @@ pub struct SearchHit {
     pub snippet: String,
 }
 
+/// Counts and integrity for the diagnostics bundle. Deliberately contains no
+/// transcript text: a bug report must not leak what the user was listening to.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoreHealth {
+    pub sessions: i64,
+    pub segments: i64,
+    pub latest: Option<String>,
+    pub user_version: i64,
+    pub integrity: String,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSegment {
@@ -487,6 +499,45 @@ impl SessionStore {
             return Err("找不到这场会话".to_string());
         }
         Ok(())
+    }
+
+    /// Aggregate counts, schema version and SQLite integrity for diagnostics.
+    pub fn health(&self) -> StoreHealth {
+        let conn = match self.lock() {
+            Ok(conn) => conn,
+            Err(err) => {
+                return StoreHealth {
+                    sessions: 0,
+                    segments: 0,
+                    latest: None,
+                    user_version: 0,
+                    integrity: err,
+                };
+            }
+        };
+        let count = |sql: &str| -> i64 { conn.query_row(sql, [], |row| row.get(0)).unwrap_or(0) };
+        let latest = conn
+            .query_row(
+                "SELECT title FROM sessions ORDER BY id DESC LIMIT 1",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .ok()
+            .flatten();
+        let user_version = conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap_or(0);
+        let integrity = conn
+            .query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))
+            .unwrap_or_else(|err| format!("integrity check failed: {err}"));
+        StoreHealth {
+            sessions: count("SELECT COUNT(*) FROM sessions"),
+            segments: count("SELECT COUNT(*) FROM segments"),
+            latest,
+            user_version,
+            integrity,
+        }
     }
 
     pub fn latest_session(&self) -> Option<i64> {

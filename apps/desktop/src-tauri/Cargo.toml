@@ -34,6 +34,8 @@ log = "0.4"
 tauri = { version = "2.12.7", features = ["tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 tauri-plugin-single-instance = "2.5.5"
 tauri-plugin-global-shortcut = "2.4.1"
 anyhow = "1.0.105"
@@ -46,6 +48,8 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 rusqlite = { version = "0.38", features = ["bundled"] }
 chrono = "0.4"
 sha2 = "0.10"
+# Diagnostics are a single zip so users can attach one file to a bug report.
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target."cfg(windows)".dependencies]
 cpal = "0.18.2"

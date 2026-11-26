@@ -66,6 +66,7 @@ type TopBarProps = {
   onToggleTheme: () => void
   onOpenSettings: () => void
   onOpenLibrary: () => void
+  onOpenAbout: () => void
   pinned: boolean
   onTogglePin: () => void
   isDemo: boolean
@@ -81,6 +82,7 @@ export function TopBar({
   onToggleTheme,
   onOpenSettings,
   onOpenLibrary,
+  onOpenAbout,
   pinned,
   onTogglePin,
   isDemo,
@@ -208,9 +210,10 @@ export function TopBar({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="About this build"
+          aria-label={tr("关于与诊断")}
           className="text-muted-foreground"
-          title="Livetrans 0.1 · capture + streaming ASR spike"
+          title={tr("版本、更新与诊断包")}
+          onClick={onOpenAbout}
         >
           <CircleHelp />
         </Button>

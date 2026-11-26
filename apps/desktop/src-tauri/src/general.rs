@@ -38,7 +38,7 @@ pub fn normalize_locale(locale: &str) -> String {
     }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GeneralSettings {
     /// Absolute directory for exported notes; `None` means `Documents\Livetrans`.
@@ -47,10 +47,27 @@ pub struct GeneralSettings {
     /// `zh-Hans` or `en`.
     #[serde(default = "default_locale")]
     pub locale: String,
+    /// Keep the app in the tray when the main window is closed.
+    #[serde(default = "default_minimize_to_tray")]
+    pub minimize_to_tray: bool,
+}
+
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        Self {
+            export_dir: None,
+            locale: default_locale(),
+            minimize_to_tray: default_minimize_to_tray(),
+        }
+    }
 }
 
 fn default_locale() -> String {
     "zh-Hans".to_string()
+}
+
+fn default_minimize_to_tray() -> bool {
+    true
 }
 
 impl GeneralSettings {
@@ -130,6 +147,7 @@ mod tests {
         let settings = GeneralSettings {
             export_dir: Some("  D:\\notes  ".to_string()),
             locale: "en".to_string(),
+            minimize_to_tray: false,
         }
         .normalized();
         assert_eq!(settings.export_dir.as_deref(), Some("D:\\notes"));
@@ -137,9 +155,11 @@ mod tests {
         let loaded = load(&path);
         assert_eq!(loaded.export_dir.as_deref(), Some("D:\\notes"));
         assert_eq!(loaded.locale, "en");
+        assert!(!loaded.minimize_to_tray);
         let empty = GeneralSettings {
             export_dir: Some("   ".to_string()),
             locale: "zh-Hans".to_string(),
+            minimize_to_tray: true,
         }
         .normalized();
         assert!(empty.export_dir.is_none());

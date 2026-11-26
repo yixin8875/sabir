@@ -12,11 +12,13 @@ import { currentLocale, normalizeLocale, tr, type Locale } from './i18n'
 export type AppSettings = {
   exportDir: string | null
   locale: Locale
+  minimizeToTray: boolean
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   exportDir: null,
   locale: 'zh-Hans',
+  minimizeToTray: true,
 }
 
 const STORAGE_KEY = 'livetrans-app-settings'
@@ -29,6 +31,7 @@ export function normalizeAppSettings(
   return {
     exportDir: dir || null,
     locale: normalizeLocale(value?.locale),
+    minimizeToTray: value?.minimizeToTray !== false,
   }
 }
 

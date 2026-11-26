@@ -244,6 +244,7 @@ export default function App() {
         }
         onOpenSettings={() => openSettings('general')}
         onOpenLibrary={() => setLibraryOpen(true)}
+        onOpenAbout={() => openSettings('about')}
         pinned={pinned}
         onTogglePin={togglePin}
         isDemo={engine.isDemo}

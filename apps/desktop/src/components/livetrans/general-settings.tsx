@@ -440,6 +440,29 @@ export function GeneralSettingsPanel({
               aria-label={tr("显示录音浮标")}
             />
           </div>
+
+          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {tr("关闭窗口时留在托盘")}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {tr(
+                  "关闭主窗口后停到系统托盘，正在进行的录音会先停止；从托盘图标恢复窗口，或在托盘菜单里退出。",
+                )}
+              </p>
+            </div>
+            <Switch
+              checked={appSettings.minimizeToTray}
+              onCheckedChange={(checked: boolean) =>
+                setAppSettings((current) => ({
+                  ...current,
+                  minimizeToTray: checked,
+                }))
+              }
+              aria-label={tr("关闭窗口时留在托盘")}
+            />
+          </div>
         </div>
       </section>
 
