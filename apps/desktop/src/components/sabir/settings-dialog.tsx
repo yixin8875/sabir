@@ -188,7 +188,7 @@ export function SettingsDialog({
       <div className="flex w-full max-w-5xl overflow-hidden border border-border bg-background shadow-2xl sm:rounded-xl">
         <aside className="hidden w-52 shrink-0 flex-col border-r border-border bg-muted/30 p-3 sm:flex">
           <p className="px-2 py-2 text-xs font-medium text-muted-foreground">
-            Livetrans
+            Sabir
           </p>
           <nav className="mt-1 space-y-0.5">
             {SECTIONS.map((item) => {

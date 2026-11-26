@@ -1,11 +1,11 @@
-//! `livetrans` command-line companion.
+//! `sabir` command-line companion.
 //!
 //! Reads the same SQLite database the app writes, so scripts can list, search,
 //! render or export sessions without opening the window. `stream --follow`
 //! tails a session's JSONL event stream for editor integrations.
 //!
-//! Build it with `cargo build --features cli --bin livetrans`; set
-//! `LIVETRANS_DB` to point at another database.
+//! Build it with `cargo build --features cli --bin sabir`; set
+//! `SABIR_DB` to point at another database.
 
 use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -17,17 +17,17 @@ use std::time::Duration;
 use crate::store::{SessionStore, EXPORT_FORMATS};
 
 const USAGE: &str = "\
-livetrans — local session companion
+sabir — local session companion
 
 Usage:
-  livetrans list [--query TEXT] [--limit N] [--json]
-  livetrans search QUERY... [--limit N] [--session ID]
-  livetrans show ID [--format md|jsonl|srt]
-  livetrans export ID [--format md|jsonl|srt] [--out PATH]
-  livetrans stream [--session ID] [--follow]
+  sabir list [--query TEXT] [--limit N] [--json]
+  sabir search QUERY... [--limit N] [--session ID]
+  sabir show ID [--format md|jsonl|srt]
+  sabir export ID [--format md|jsonl|srt] [--out PATH]
+  sabir stream [--session ID] [--follow]
 
 Environment:
-  LIVETRANS_DB   path to livetrans.db (defaults to the app's data folder)
+  SABIR_DB   path to sabir.db (defaults to the app's data folder)
 ";
 
 struct Argv {
@@ -60,7 +60,7 @@ impl Argv {
 }
 
 fn fail(message: &str) -> ! {
-    eprintln!("livetrans: {message}");
+    eprintln!("sabir: {message}");
     exit(1);
 }
 
@@ -75,46 +75,54 @@ fn parse_id(value: Option<String>) -> Option<i64> {
     value.and_then(|text| text.trim().parse::<i64>().ok())
 }
 
-/// `%APPDATA%\app.livetrans.desktop` (or the platform equivalent) unless
-/// `LIVETRANS_DB` overrides the database path.
+/// `%APPDATA%\app.sabir.desktop` (or the platform equivalent) unless
+/// `SABIR_DB` overrides the database path.
 fn db_path() -> PathBuf {
-    if let Ok(value) = std::env::var("LIVETRANS_DB") {
+    if let Ok(value) = std::env::var("SABIR_DB") {
         if !value.trim().is_empty() {
             return PathBuf::from(value);
         }
     }
-    data_dir().join("livetrans.db")
+    data_dir().join("sabir.db")
+}
+
+/// Prefer the renamed app folder, but fall back to the pre-rename one until
+/// the desktop app has moved it.
+fn pick_app_dir(parent: PathBuf) -> PathBuf {
+    let current = parent.join("app.sabir.desktop");
+    if current.is_dir() {
+        return current;
+    }
+    let legacy = parent.join("app.livetrans.desktop");
+    if legacy.is_dir() {
+        return legacy;
+    }
+    current
 }
 
 fn data_dir() -> PathBuf {
     #[cfg(windows)]
     {
         if let Ok(appdata) = std::env::var("APPDATA") {
-            return PathBuf::from(appdata).join("app.livetrans.desktop");
+            return pick_app_dir(PathBuf::from(appdata));
         }
     }
     #[cfg(target_os = "macos")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home)
-                .join("Library")
-                .join("Application Support")
-                .join("app.livetrans.desktop");
+            return pick_app_dir(PathBuf::from(home).join("Library").join("Application Support"));
         }
     }
     #[cfg(all(not(windows), not(target_os = "macos")))]
     {
         if let Ok(data) = std::env::var("XDG_DATA_HOME") {
-            return PathBuf::from(data).join("app.livetrans.desktop");
+            return pick_app_dir(PathBuf::from(data));
         }
         if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home)
-                .join(".local")
-                .join("share")
-                .join("app.livetrans.desktop");
+            return pick_app_dir(PathBuf::from(home).join(".local").join("share"));
         }
     }
-    PathBuf::from(".livetrans")
+    PathBuf::from(".sabir")
 }
 
 fn streams_dir() -> PathBuf {
@@ -156,7 +164,7 @@ pub fn run(args: Vec<String>) {
         "show" => show(&mut argv),
         "export" => export(&mut argv),
         "stream" => stream(&mut argv),
-        other => fail(&format!("unknown command `{other}`; try `livetrans help`")),
+        other => fail(&format!("unknown command `{other}`; try `sabir help`")),
     }
 }
 
@@ -186,7 +194,7 @@ fn search(argv: &mut Argv) {
     let session_id = parse_id(argv.value("--session"));
     let query = argv.items.join(" ").trim().to_string();
     if query.is_empty() {
-        fail("give a word or sentence to search for; try `livetrans search rollout`");
+        fail("give a word or sentence to search for; try `sabir search rollout`");
     }
     let store = open_store();
     for hit in store.search_fulltext(&query, limit, session_id) {
@@ -198,7 +206,7 @@ fn show(argv: &mut Argv) {
     let format = argv.value("--format").unwrap_or_else(|| "md".to_string());
     let id = parse_id(argv.items.first().cloned());
     let Some(id) = id else {
-        fail("give a session id; run `livetrans list` to find one");
+        fail("give a session id; run `sabir list` to find one");
     };
     if !EXPORT_FORMATS.contains(&format.as_str()) {
         fail("format must be md, jsonl or srt");
@@ -215,14 +223,14 @@ fn export(argv: &mut Argv) {
     let out = argv.value("--out");
     let id = parse_id(argv.items.first().cloned());
     let Some(id) = id else {
-        fail("give a session id; run `livetrans list` to find one");
+        fail("give a session id; run `sabir list` to find one");
     };
     if !EXPORT_FORMATS.contains(&format.as_str()) {
         fail("format must be md, jsonl or srt");
     }
     let dest = out
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(format!("livetrans-{id}.{format}")));
+        .unwrap_or_else(|| PathBuf::from(format!("sabir-{id}.{format}")));
     let store = open_store();
     match store.export(id, &format, &dest) {
         Ok(path) => println!("{}", path.display()),

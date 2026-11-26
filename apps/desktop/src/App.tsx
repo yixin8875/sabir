@@ -2,16 +2,16 @@ import { currentLocale, localize, setLocale, tr } from '@/lib/i18n'
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
-import { AskPanel } from '@/components/livetrans/ask-panel'
-import { ControlDock, TopBar } from '@/components/livetrans/chrome'
-import type { GeneralSaveResult } from '@/components/livetrans/general-settings'
-import { LibraryDialog } from '@/components/livetrans/library-dialog'
-import { Onboarding } from '@/components/livetrans/onboarding'
+import { AskPanel } from '@/components/sabir/ask-panel'
+import { ControlDock, TopBar } from '@/components/sabir/chrome'
+import type { GeneralSaveResult } from '@/components/sabir/general-settings'
+import { LibraryDialog } from '@/components/sabir/library-dialog'
+import { Onboarding } from '@/components/sabir/onboarding'
 import {
   SettingsDialog,
   type SettingsSection,
-} from '@/components/livetrans/settings-dialog'
-import { TranscriptView } from '@/components/livetrans/transcript'
+} from '@/components/sabir/settings-dialog'
+import { TranscriptView } from '@/components/sabir/transcript'
 import { useAsrSettings } from '@/hooks/use-asr-settings'
 import { useAudioSettings } from '@/hooks/use-audio-settings'
 import { useEngine } from '@/hooks/use-engine'
@@ -30,7 +30,7 @@ type Theme = 'light' | 'dark'
 
 function initialTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
-  const stored = window.localStorage.getItem('livetrans-theme')
+  const stored = window.localStorage.getItem('sabir-theme')
   if (stored === 'light' || stored === 'dark') return stored
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
@@ -58,7 +58,7 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(
     () =>
       typeof window !== 'undefined' &&
-      window.localStorage.getItem('livetrans-onboarded') === '1',
+      window.localStorage.getItem('sabir-onboarded') === '1',
   )
   const translateLabel = describeRoute(translate.settings)
   const asrReady = asr.ready
@@ -68,7 +68,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
-    window.localStorage.setItem('livetrans-theme', theme)
+    window.localStorage.setItem('sabir-theme', theme)
   }, [theme])
 
   // Rust is the source of truth for the interface language; mirror it into
@@ -156,7 +156,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isTauri()) return
-    void emit('livetrans:float-status', {
+    void emit('sabir:float-status', {
       state,
       elapsedMs: engine.elapsedMs,
       source: floatSource,
@@ -165,7 +165,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isTauri()) return
-    const unlisten = listen<string>('livetrans:command', (event) => {
+    const unlisten = listen<string>('sabir:command', (event) => {
       switch (event.payload) {
         case 'toggle':
           toggleRecording()
@@ -189,7 +189,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isTauri()) return
-    const unlisten = listen<string>('livetrans:float-action', (event) => {
+    const unlisten = listen<string>('sabir:float-action', (event) => {
       switch (event.payload) {
         case 'pause':
           pause()

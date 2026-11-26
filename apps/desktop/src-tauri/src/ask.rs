@@ -660,7 +660,7 @@ mod tests {
 
     #[test]
     fn retrieval_prefers_lines_hitting_more_terms() {
-        let dir = std::env::temp_dir().join(format!("livetrans-retrieve-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-retrieve-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = SessionStore::open(&dir.join("test.db")).unwrap();
         let first = store

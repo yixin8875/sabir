@@ -91,7 +91,7 @@ impl NmtTranslator {
             None => ort::init(),
         };
         let env = builder
-            .with_name("livetrans-nmt")
+            .with_name("sabir-nmt")
             .build()
             .map_err(|err| format!("ONNX Runtime 初始化失败：{err}"))?;
 

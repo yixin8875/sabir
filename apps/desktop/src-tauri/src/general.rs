@@ -41,7 +41,7 @@ pub fn normalize_locale(locale: &str) -> String {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GeneralSettings {
-    /// Absolute directory for exported notes; `None` means `Documents\Livetrans`.
+    /// Absolute directory for exported notes; `None` means `Documents\Sabir`.
     #[serde(default)]
     pub export_dir: Option<String>,
     /// `zh-Hans` or `en`.
@@ -112,7 +112,7 @@ pub fn save(path: &Path, settings: &GeneralSettings) -> Result<(), String> {
 pub fn default_export_dir(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .document_dir()
-        .map(|dir| dir.join("Livetrans"))
+        .map(|dir| dir.join("Sabir"))
         .map_err(|err| {
             if is_chinese() {
                 format!("找不到文档目录：{err}")
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn settings_round_trip() {
-        let dir = std::env::temp_dir().join("livetrans-general-test");
+        let dir = std::env::temp_dir().join("sabir-general-test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("general.json");

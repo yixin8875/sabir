@@ -11,7 +11,7 @@ $ProgressPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $PSScriptRoot
 $tauri = Join-Path $root 'apps/desktop/src-tauri'
 $vendor = Join-Path $tauri 'vendor'
-$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("livetrans-vendor-" + [guid]::NewGuid())
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("sabir-vendor-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
 function Get-File([string]$url, [string]$out) {

@@ -30,7 +30,7 @@ function formatElapsed(ms: number): string {
 }
 
 function send(action: 'pause' | 'resume' | 'stop' | 'focus') {
-  void emit('livetrans:float-action', action).catch(() => {})
+  void emit('sabir:float-action', action).catch(() => {})
 }
 
 /**
@@ -43,7 +43,7 @@ export function LiveIndicator() {
 
   useEffect(() => {
     if (!isTauri()) return
-    const unlisten = listen<FloatStatus>('livetrans:float-status', (event) => {
+    const unlisten = listen<FloatStatus>('sabir:float-status', (event) => {
       setStatus(event.payload)
     }).catch(() => null)
     return () => {
@@ -83,7 +83,7 @@ export function LiveIndicator() {
         <button
           type="button"
           onClick={() => send('focus')}
-          title={tr("打开 Livetrans 主窗口")}
+          title={tr("打开 Sabir 主窗口")}
           className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-white/5"
         >
           <span className="block font-mono text-sm leading-5 font-medium tabular-nums">

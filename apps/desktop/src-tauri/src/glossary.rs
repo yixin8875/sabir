@@ -279,7 +279,7 @@ pub fn export_portable(path: &Path, glossary: &Glossary) -> Result<PathBuf, Stri
         .to_string());
     }
     let document = PortableGlossary {
-        app: Some("livetrans".to_string()),
+        app: Some("sabir".to_string()),
         kind: Some("glossary".to_string()),
         version: Some(1),
         presets,
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn hotwords_file_round_trips_and_clears() {
-        let dir = std::env::temp_dir().join(format!("livetrans-glossary-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-glossary-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let glossary = Glossary {
             active_id: "p1".to_string(),
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn portable_file_round_trips_without_ids_or_the_general_preset() {
-        let dir = std::env::temp_dir().join(format!("livetrans-glossary-portable-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-glossary-portable-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let glossary = Glossary {
             active_id: "p1".to_string(),
@@ -495,7 +495,7 @@ mod tests {
 
     #[test]
     fn importing_the_in_app_file_shape_works() {
-        let dir = std::env::temp_dir().join(format!("livetrans-glossary-import-app-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-glossary-import-app-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("glossary.json");
@@ -514,7 +514,7 @@ mod tests {
 
     #[test]
     fn portable_files_reject_empty_or_broken_content() {
-        let dir = std::env::temp_dir().join(format!("livetrans-glossary-import-bad-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-glossary-import-bad-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert!(export_portable(&dir.join("empty.json"), &Glossary::default()).is_err());
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn legacy_file_is_migrated_and_round_trips() {
-        let dir = std::env::temp_dir().join(format!("livetrans-glossary-legacy-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sabir-glossary-legacy-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("glossary.json");

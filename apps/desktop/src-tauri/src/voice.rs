@@ -232,7 +232,7 @@ impl VoiceService {
         let root = self.root.clone();
         let app_handle = app.clone();
         thread::Builder::new()
-            .name("livetrans-voice-download".to_string())
+            .name("sabir-voice-download".to_string())
             .spawn(move || {
                 let outcome = download_model(&root, &flag, &mut |event| {
                     let _ = channel.send(event);
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn empty_directory_is_not_installed() {
-        let dir = std::env::temp_dir().join("livetrans-voice-empty");
+        let dir = std::env::temp_dir().join("sabir-voice-empty");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         assert!(!installed(&dir));
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn settings_default_to_off_and_round_trip() {
-        let path = std::env::temp_dir().join("livetrans-voice-settings.json");
+        let path = std::env::temp_dir().join("sabir-voice-settings.json");
         let _ = fs::remove_file(&path);
         assert!(!load_settings(&path).enabled);
         write_settings(&path, &VoiceSettings { enabled: true }).unwrap();
@@ -657,7 +657,7 @@ mod tests {
     #[test]
     #[ignore = "downloads ~370MB from the network; run with --ignored"]
     fn downloads_and_synthesises_a_sentence() {
-        let root = std::env::temp_dir().join("livetrans-voice-download-test");
+        let root = std::env::temp_dir().join("sabir-voice-download-test");
         let _ = fs::remove_dir_all(&root);
         let flag = AtomicBool::new(false);
         let mut last: Option<VoiceDownloadEvent> = None;

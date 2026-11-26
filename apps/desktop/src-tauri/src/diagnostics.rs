@@ -29,7 +29,7 @@ const SETTINGS: [(&str, &str); 6] = [
     ("plugins.json", "plugins"),
 ];
 
-const READ_ME: &str = "Livetrans diagnostics\n\
+const READ_ME: &str = "Sabir diagnostics\n\
 \n\
 This archive contains app/system versions, store counts, sanitized settings\n\
 and the tail of the log. It does not contain transcripts, audio, the session\n\
@@ -182,7 +182,7 @@ pub fn export(app: &AppHandle, health: StoreHealth, dest: &Path) -> Result<Strin
     let summary = json!({
         "generatedAt": chrono::Local::now().to_rfc3339(),
         "app": {
-            "name": "Livetrans",
+            "name": "Sabir",
             "version": info.version.to_string(),
             "identifier": app.config().identifier,
             "debug": cfg!(debug_assertions),
@@ -231,7 +231,7 @@ mod tests {
                 "apiKey": "sk-do-not-export",
                 "provider": { "baseUrl": "http://127.0.0.1:11434/v1", "key": "x", "model": "qwen2.5:3b" },
                 "enabled": true,
-                "command": "python C:\\plugins\\livetrans.py",
+                "command": "python C:\\plugins\\sabir.py",
                 "consentAt": "2026-11-25T13:00:00Z"
             }"#,
         )

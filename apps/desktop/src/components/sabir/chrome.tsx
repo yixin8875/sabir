@@ -121,7 +121,7 @@ export function TopBar({
       <div className="flex min-w-0 items-center gap-2.5">
         <LogoMark />
         <span className="text-[15px] font-medium tracking-tight text-foreground">
-          livetrans
+          sabir
         </span>
         <Separator orientation="vertical" className="mx-1 h-4" />
         <span className="hidden truncate text-sm text-muted-foreground sm:inline">

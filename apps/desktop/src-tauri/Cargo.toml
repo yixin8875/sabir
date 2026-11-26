@@ -16,12 +16,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [features]
 # The desktop app does not need the companion CLI; opt in explicitly:
-#   cargo build --features cli --bin livetrans
+#   cargo build --features cli --bin sabir
 cli = []
 
 [[bin]]
-name = "livetrans"
-path = "src/bin/livetrans.rs"
+name = "sabir"
+path = "src/bin/sabir.rs"
 required-features = ["cli"]
 
 [build-dependencies]

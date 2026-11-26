@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn empty_directory_is_not_installed() {
-        let dir = std::env::temp_dir().join("livetrans-nmt-empty");
+        let dir = std::env::temp_dir().join("sabir-nmt-empty");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         assert!(!installed(&dir));
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     #[ignore = "downloads ~421MB from the network; run with --ignored"]
     fn downloads_the_nmt_package() {
-        let root = std::env::temp_dir().join("livetrans-nmt-download-test");
+        let root = std::env::temp_dir().join("sabir-nmt-download-test");
         let _ = fs::remove_dir_all(&root);
         let flag = AtomicBool::new(false);
         let mut last: Option<TranslateDownloadEvent> = None;

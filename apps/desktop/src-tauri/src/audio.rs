@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn settings_roundtrip_and_clamp() {
-        let dir = std::env::temp_dir().join("livetrans-audio-settings");
+        let dir = std::env::temp_dir().join("sabir-audio-settings");
         let _ = fs::remove_dir_all(&dir);
         let path = dir.join("audio.json");
         assert_eq!(load(&path), AudioSettings::default());

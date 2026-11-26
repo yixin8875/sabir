@@ -455,7 +455,7 @@ impl AsrService {
     }
 
     /// Resolve the directory the engine should load. Besides the selection in
-    /// `asr.json`, a development checkout and `LIVETRANS_MODEL_DIR` are honoured
+    /// `asr.json`, a development checkout and `SABIR_MODEL_DIR` are honoured
     /// so `cargo run` keeps working without downloading anything.
     pub fn resolve_dir(&self) -> Option<PathBuf> {
         if let Some(dir) = self.selected_dir() {
@@ -463,7 +463,7 @@ impl AsrService {
         }
 
         let mut candidates: Vec<PathBuf> = Vec::new();
-        if let Ok(dir) = std::env::var("LIVETRANS_MODEL_DIR") {
+        if let Ok(dir) = std::env::var("SABIR_MODEL_DIR") {
             candidates.push(PathBuf::from(dir));
         }
         // `cargo run` should keep working against the checkout's sample model;
@@ -596,7 +596,7 @@ impl AsrService {
         let app_handle = app.clone();
         let root = self.current_root();
         thread::Builder::new()
-            .name(format!("livetrans-download-{id}"))
+            .name(format!("sabir-download-{id}"))
             .spawn(move || {
                 let outcome = download_model(def, &root, &flag, &mut |event| {
                     let _ = channel.send(event);
@@ -853,7 +853,7 @@ mod tests {
 
     #[test]
     fn discovers_int8_encoder_decoder_joiner() {
-        let dir = std::env::temp_dir().join("livetrans-discover-test");
+        let dir = std::env::temp_dir().join("sabir-discover-test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         for name in [
@@ -878,7 +878,7 @@ mod tests {
 
     #[test]
     fn discovers_whisper_without_joiner() {
-        let dir = std::env::temp_dir().join("livetrans-discover-whisper");
+        let dir = std::env::temp_dir().join("sabir-discover-whisper");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         for name in [
@@ -904,7 +904,7 @@ mod tests {
 
     #[test]
     fn missing_tokens_means_not_installed() {
-        let dir = std::env::temp_dir().join("livetrans-discover-incomplete");
+        let dir = std::env::temp_dir().join("sabir-discover-incomplete");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         for name in ["encoder-x.int8.onnx", "decoder-x.onnx", "joiner-x.int8.onnx"] {
@@ -916,7 +916,7 @@ mod tests {
 
     #[test]
     fn settings_roundtrip() {
-        let path = std::env::temp_dir().join("livetrans-asr-settings.json");
+        let path = std::env::temp_dir().join("sabir-asr-settings.json");
         let _ = fs::remove_file(&path);
         assert!(load_settings(&path).model.is_none());
 
@@ -936,7 +936,7 @@ mod tests {
     #[test]
     #[ignore = "downloads ~358MB from the network; run with --ignored"]
     fn downloads_whisper_small_from_mirror() {
-        let root = std::env::temp_dir().join("livetrans-whisper-download-test");
+        let root = std::env::temp_dir().join("sabir-whisper-download-test");
         let _ = fs::remove_dir_all(&root);
         let def = CATALOG
             .iter()
@@ -956,7 +956,7 @@ mod tests {
     #[test]
     #[ignore = "downloads ~31MB from the network; run with --ignored"]
     fn downloads_zh_14m_from_mirror() {
-        let root = std::env::temp_dir().join("livetrans-download-test");
+        let root = std::env::temp_dir().join("sabir-download-test");
         let _ = fs::remove_dir_all(&root);
         let def = CATALOG.iter().find(|def| def.id == "zh-14m").unwrap();
         let flag = AtomicBool::new(false);

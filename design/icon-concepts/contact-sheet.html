@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sabir — icon studies</title>
+<style>
+  :root {
+    --ink: #17181c;
+    --teal: #2b6f80;
+    --teal-light: #8fd0dd;
+    --paper: #fbfaf7;
+    --ground: #f2efe8;
+    --rule: #d9d4c8;
+    --muted: #6d6a62;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .sheet {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 40px 72px;
+  }
+
+  .masthead {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 40px;
+    align-items: end;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .wordmark {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 52px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .kicker {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-style: italic;
+    font-size: 17px;
+  }
+
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 400;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--muted);
+    max-width: 40ch;
+  }
+
+  .concept {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 36px;
+    padding: 44px 0 48px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .concept-head .tag {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--ink);
+    border-radius: 50%;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 17px;
+    margin-bottom: 14px;
+  }
+
+  .concept-head h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 400;
+    font-size: 26px;
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+
+  .concept-head p {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .concept-head .verdict {
+    color: var(--ink);
+    font-size: 13px;
+    border-left: 2px solid var(--teal);
+    padding-left: 10px;
+    margin-top: 16px;
+  }
+
+  .body { display: grid; gap: 22px; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  figure {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 26px;
+    border-radius: 18px;
+    min-height: 232px;
+  }
+
+  figure.light { background: var(--paper); border: 1px solid var(--rule); }
+  figure.dark { background: var(--ink); }
+
+  figure img {
+    width: 176px;
+    height: 176px;
+    border-radius: 22%;
+    display: block;
+  }
+
+  figcaption {
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-style: italic;
+  }
+
+  figure.dark figcaption { color: #b9b6ae; }
+
+  .ramp {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .ramp-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    padding: 16px 20px;
+    border-radius: 14px;
+    min-height: 96px;
+  }
+
+  .ramp-row.light { background: var(--paper); border: 1px solid var(--rule); }
+  .ramp-row.dark { background: var(--ink); }
+
+  .ramp-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-right: auto;
+    align-self: center;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-style: italic;
+  }
+
+  .ramp-row.dark .ramp-label { color: #b9b6ae; }
+
+  .ramp-row img { display: block; border-radius: 22%; }
+  .r256 { width: 64px; height: 64px; }
+  .r64 { width: 32px; height: 32px; }
+  .r32 { width: 24px; height: 24px; }
+  .r16 { width: 16px; height: 16px; }
+  .r20 { width: 20px; height: 20px; }
+
+  .tray {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .bar.dark { background: #202124; color: #e8e6e1; }
+  .bar.light { background: #e9e5dc; color: #2c2b28; border: 1px solid var(--rule); }
+
+  .bar img { display: block; }
+  .bar .divider { width: 1px; height: 20px; background: currentColor; opacity: 0.18; }
+
+  .bar .bar-label {
+    margin-right: auto;
+    font-size: 11px;
+    opacity: 0.55;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-style: italic;
+  }
+
+  .note {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 36px;
+    padding-top: 36px;
+  }
+
+  .note h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 400;
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .note-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .note-grid h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .note-grid p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .swatches {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .chip {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  @media (max-width: 1080px) {
+    .masthead, .concept, .note { grid-template-columns: 1fr; }
+    .stage, .ramp, .tray { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 680px) {
+    .sheet { padding: 32px 20px 48px; }
+    .stage, .ramp, .tray, .note-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <div class="wordmark">Sabir</div>
+      <p class="kicker">Icon studies · 26 November 2026</p>
+    </div>
+    <div>
+      <h1>Three ways to say “between two languages”.</h1>
+      <p class="lede">Sabir was the working tongue of Mediterranean ports — a bridge language. Each direction carries that idea at icon scale, in the existing ink and teal palette.</p>
+    </div>
+  </header>
+
+  <section class="concept">
+    <div class="concept-head">
+      <span class="tag">A</span>
+      <h2>Interlinear</h2>
+      <p>A filled caption bubble holds two lines: the spoken line in ink, its translation in teal underneath. The tail makes it speech, not a text file.</p>
+      <p class="verdict">Recommended: the clearest read at 16 px, and the only one that shows both the source and the translated line.</p>
+    </div>
+    <div class="body">
+      <div class="stage">
+        <figure class="light">
+          <img src="concept-a-interlinear.svg" alt="Concept A, light: ink caption bubble with a paper line and a teal line">
+          <figcaption>Light</figcaption>
+        </figure>
+        <figure class="dark">
+          <img src="concept-a-interlinear-dark.svg" alt="Concept A, dark: paper caption bubble with an ink line and a teal line">
+          <figcaption>Dark</figcaption>
+        </figure>
+      </div>
+      <div class="ramp">
+        <div class="ramp-row light">
+          <span class="ramp-label">Light</span>
+          <img class="r256" src="concept-a-interlinear.svg" alt="">
+          <img class="r64" src="concept-a-interlinear.svg" alt="">
+          <img class="r32" src="concept-a-interlinear.svg" alt="">
+          <img class="r16" src="concept-a-interlinear.svg" alt="">
+        </div>
+        <div class="ramp-row dark">
+          <span class="ramp-label">Dark</span>
+          <img class="r256" src="concept-a-interlinear-dark.svg" alt="">
+          <img class="r64" src="concept-a-interlinear-dark.svg" alt="">
+          <img class="r32" src="concept-a-interlinear-dark.svg" alt="">
+          <img class="r16" src="concept-a-interlinear-dark.svg" alt="">
+        </div>
+      </div>
+      <div class="tray">
+        <div class="bar dark">
+          <span class="bar-label">Tray, dark taskbar</span>
+          <img class="r16" src="concept-a-interlinear-dark.svg" alt="">
+          <img class="r20" src="concept-a-interlinear-dark.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+        <div class="bar light">
+          <span class="bar-label">Tray, light taskbar</span>
+          <img class="r16" src="concept-a-interlinear.svg" alt="">
+          <img class="r20" src="concept-a-interlinear.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="concept">
+    <div class="concept-head">
+      <span class="tag">B</span>
+      <h2>Bridge</h2>
+      <p>Two ink shores joined by a single teal span. The most literal picture of a lingua franca: one line carrying meaning across a gap.</p>
+      <p class="verdict">Strong metaphor, but the arch is the first detail to disappear below 24 px.</p>
+    </div>
+    <div class="body">
+      <div class="stage">
+        <figure class="light">
+          <img src="concept-b-bridge.svg" alt="Concept B, light: two ink shores joined by a teal arch">
+          <figcaption>Light</figcaption>
+        </figure>
+        <figure class="dark">
+          <img src="concept-b-bridge-dark.svg" alt="Concept B, dark: two paper shores joined by a light teal arch">
+          <figcaption>Dark</figcaption>
+        </figure>
+      </div>
+      <div class="ramp">
+        <div class="ramp-row light">
+          <span class="ramp-label">Light</span>
+          <img class="r256" src="concept-b-bridge.svg" alt="">
+          <img class="r64" src="concept-b-bridge.svg" alt="">
+          <img class="r32" src="concept-b-bridge.svg" alt="">
+          <img class="r16" src="concept-b-bridge.svg" alt="">
+        </div>
+        <div class="ramp-row dark">
+          <span class="ramp-label">Dark</span>
+          <img class="r256" src="concept-b-bridge-dark.svg" alt="">
+          <img class="r64" src="concept-b-bridge-dark.svg" alt="">
+          <img class="r32" src="concept-b-bridge-dark.svg" alt="">
+          <img class="r16" src="concept-b-bridge-dark.svg" alt="">
+        </div>
+      </div>
+      <div class="tray">
+        <div class="bar dark">
+          <span class="bar-label">Tray, dark taskbar</span>
+          <img class="r16" src="concept-b-bridge-dark.svg" alt="">
+          <img class="r20" src="concept-b-bridge-dark.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+        <div class="bar light">
+          <span class="bar-label">Tray, light taskbar</span>
+          <img class="r16" src="concept-b-bridge.svg" alt="">
+          <img class="r20" src="concept-b-bridge.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="concept">
+    <div class="concept-head">
+      <span class="tag">C</span>
+      <h2>S monogram</h2>
+      <p>An S built from caption strokes inside a dark frame. The middle stroke is teal — the translated line cutting across the spoken one.</p>
+      <p class="verdict">The most durable at tiny sizes and the easiest to put on an installer, but it says less about what the app does.</p>
+    </div>
+    <div class="body">
+      <div class="stage">
+        <figure class="light">
+          <img src="concept-c-monogram.svg" alt="Concept C, light: white S in a dark rounded frame with a teal middle stroke">
+          <figcaption>Light</figcaption>
+        </figure>
+        <figure class="dark">
+          <img src="concept-c-monogram-dark.svg" alt="Concept C, dark: dark S in a light rounded frame with a teal middle stroke">
+          <figcaption>Dark</figcaption>
+        </figure>
+      </div>
+      <div class="ramp">
+        <div class="ramp-row light">
+          <span class="ramp-label">Light</span>
+          <img class="r256" src="concept-c-monogram.svg" alt="">
+          <img class="r64" src="concept-c-monogram.svg" alt="">
+          <img class="r32" src="concept-c-monogram.svg" alt="">
+          <img class="r16" src="concept-c-monogram.svg" alt="">
+        </div>
+        <div class="ramp-row dark">
+          <span class="ramp-label">Dark</span>
+          <img class="r256" src="concept-c-monogram-dark.svg" alt="">
+          <img class="r64" src="concept-c-monogram-dark.svg" alt="">
+          <img class="r32" src="concept-c-monogram-dark.svg" alt="">
+          <img class="r16" src="concept-c-monogram-dark.svg" alt="">
+        </div>
+      </div>
+      <div class="tray">
+        <div class="bar dark">
+          <span class="bar-label">Tray, dark taskbar</span>
+          <img class="r16" src="concept-c-monogram-dark.svg" alt="">
+          <img class="r20" src="concept-c-monogram-dark.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+        <div class="bar light">
+          <span class="bar-label">Tray, light taskbar</span>
+          <img class="r16" src="concept-c-monogram.svg" alt="">
+          <img class="r20" src="concept-c-monogram.svg" alt="">
+          <span class="divider"></span>
+          <span>14:03</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="note">
+    <h2>Before generating</h2>
+    <div>
+      <div class="note-grid">
+        <div>
+          <h3>One source file</h3>
+          <p>The chosen SVG becomes the single source for <code>pnpm tauri icon</code>: window, tray, installer, Store logos and <code>favicon.svg</code>.</p>
+        </div>
+        <div>
+          <h3>Small-size check</h3>
+          <p>16 px is the tray on a 100% display. A works by fill alone; B loses its arc; C keeps its shape but reads as a letter.</p>
+        </div>
+        <div>
+          <h3>Palette</h3>
+          <p>Ink and teal are already in the app. Nothing new enters the product for the icon.</p>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="swatch"><span class="chip" style="background:#17181c"></span>Ink · #17181C</span>
+        <span class="swatch"><span class="chip" style="background:#2b6f80"></span>Teal · #2B6F80</span>
+        <span class="swatch"><span class="chip" style="background:#8fd0dd"></span>Teal light · #8FD0DD</span>
+        <span class="swatch"><span class="chip" style="background:#fbfaf7"></span>Paper · #FBFAF7</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

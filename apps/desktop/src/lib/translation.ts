@@ -205,7 +205,7 @@ export async function clearProviderApiKey(
   })
 }
 
-const PORTABLE_PROVIDERS_FILE = 'livetrans-providers.json'
+const PORTABLE_PROVIDERS_FILE = 'sabir-providers.json'
 
 /**
  * Write configured profiles to a shared JSON file without keys, consent or
@@ -228,7 +228,7 @@ export async function exportProviderProfilesFile(
   }
   if (!isTauri()) {
     downloadJsonFile(PORTABLE_PROVIDERS_FILE, {
-      app: 'livetrans',
+      app: 'sabir',
       kind: 'provider-profiles',
       version: 1,
       profiles: portable,

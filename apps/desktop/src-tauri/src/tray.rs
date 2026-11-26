@@ -35,7 +35,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItem::with_id(
         app,
         "quit",
-        general::pick("退出 Livetrans", "Quit Livetrans"),
+        general::pick("退出 Sabir", "Quit Sabir"),
         true,
         None::<&str>,
     )?;
@@ -47,14 +47,14 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 .cloned()
                 .expect("the app icon is bundled"),
         )
-        .tooltip("Livetrans")
+        .tooltip("Sabir")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => show_main(app),
             "settings" => {
                 show_main(app);
-                if let Err(err) = app.emit("livetrans:command", "settings") {
+                if let Err(err) = app.emit("sabir:command", "settings") {
                     log::warn!("tray: could not send settings command: {err}");
                 }
             }

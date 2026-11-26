@@ -55,7 +55,7 @@ const MAX_CAPTION = 24
 
 function initialCaptionSize() {
   if (typeof window === 'undefined') return 15
-  const stored = Number(window.localStorage.getItem('livetrans-caption-size'))
+  const stored = Number(window.localStorage.getItem('sabir-caption-size'))
   return Number.isFinite(stored) && stored >= MIN_CAPTION && stored <= MAX_CAPTION
     ? stored
     : 15
@@ -96,7 +96,7 @@ export function TranscriptView({
   function changeCaptionSize(delta: number) {
     setCaptionSize((current) => {
       const next = Math.min(MAX_CAPTION, Math.max(MIN_CAPTION, current + delta))
-      window.localStorage.setItem('livetrans-caption-size', String(next))
+      window.localStorage.setItem('sabir-caption-size', String(next))
       return next
     })
   }

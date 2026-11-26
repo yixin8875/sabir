@@ -2,7 +2,7 @@
 //! managers.
 //!
 //! Files come from Hugging Face repositories; `hf-mirror.com` is tried before
-//! `huggingface.co`, and `LIVETRANS_MODEL_BASE` overrides both. Every file
+//! `huggingface.co`, and `SABIR_MODEL_BASE` overrides both. Every file
 //! downloads to `<name>.part` with an HTTP Range resume and is renamed only
 //! after its byte count and SHA-256 match the catalogue; a mismatch deletes
 //! the partial file so the next attempt starts clean. Only model weights
@@ -82,7 +82,7 @@ pub fn pick_base(
     repo: &str,
     probe: &str,
 ) -> Result<String, String> {
-    if let Ok(base) = std::env::var("LIVETRANS_MODEL_BASE") {
+    if let Ok(base) = std::env::var("SABIR_MODEL_BASE") {
         let base = base.trim_end_matches('/').to_string();
         if !base.is_empty() {
             return Ok(base);
@@ -98,7 +98,7 @@ pub fn pick_base(
         }
     }
     Err(format!(
-        "模型站点都连不上（{last_error}）。检查网络，或用 LIVETRANS_MODEL_BASE 指定镜像。"
+        "模型站点都连不上（{last_error}）。检查网络，或用 SABIR_MODEL_BASE 指定镜像。"
     ))
 }
 
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn sha256_matches_a_known_vector() {
-        let dir = std::env::temp_dir().join("livetrans-sha256-test");
+        let dir = std::env::temp_dir().join("sabir-sha256-test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("abc.txt");

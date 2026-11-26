@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Livetrans",
+  "productName": "Sabir",
   "version": "0.1.0",
-  "identifier": "app.livetrans.desktop",
+  "identifier": "app.sabir.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5180",
@@ -12,7 +12,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/OWNER/livetrans/releases/latest/download/latest.json"
+        "https://github.com/OWNER/sabir/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBQzBGNzE3MDQ0OTA1RjQKUldUMEJVa0VGL2ZBV21MQ3MyemVFcENQVXlGNWF4MTVzU3g5Nm5DWW5QRnBuUlp0bWxiNHRLL1EK"
     }
@@ -20,7 +20,7 @@
   "app": {
     "windows": [
       {
-        "title": "Livetrans",
+        "title": "Sabir",
         "width": 1180,
         "height": 760,
         "minWidth": 880,
@@ -31,7 +31,7 @@
       },
       {
         "label": "float",
-        "title": "Livetrans 录音浮标",
+        "title": "Sabir 录音浮标",
         "url": "index.html?view=float",
         "width": 300,
         "height": 68,

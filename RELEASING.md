@@ -5,7 +5,7 @@
 ## 一次性准备
 
 1. **仓库地址**：把 `apps/desktop/src-tauri/tauri.conf.json` 里的
-   `https://github.com/OWNER/livetrans/releases/latest/download/latest.json`
+   `https://github.com/OWNER/sabir/releases/latest/download/latest.json`
    改成实际仓库（`OWNER` 换成 GitHub 用户名或组织名）。自动更新只认这个地址。
 2. **签名密钥**：仓库外已生成私钥 `C:\Users\86176\.livetrans\updater.key`
    （无密码）。这份私钥**不要提交、不要贴进 issue**；丢失后旧版本无法验证新更新，只能让用户手动重装。建议离线备份一份。
@@ -41,7 +41,7 @@ git push origin v0.1.1
 
 ## 发布后自检
 
-1. 在 Releases 草稿里确认：`Livetrans_0.1.1_x64-setup.exe`、`.msi`、对应的 `.sig`、`latest.json` 都在。
+1. 在 Releases 草稿里确认：`Sabir_0.1.1_x64-setup.exe`、`.msi`、对应的 `.sig`、`latest.json` 都在。
 2. 安装上一版本，打开「设置 → 关于与诊断」→「检查更新」，应提示 `0.1.1`；下载安装后重启应显示新版本。
 3. 手动安装新包做一次基本冒烟：能开始/停止录音、托盘可用、诊断包能导出。
 4. 自检通过后再把草稿发布为正式 Release。`latest.json` 只在正式发布后对用户可见（`releases/latest/download/` 指向最新正式版）。

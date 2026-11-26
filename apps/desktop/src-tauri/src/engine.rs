@@ -186,7 +186,7 @@ impl Engine {
         let store = Arc::clone(&self.store);
         let plugins = Arc::clone(&self.plugins);
         let ui = channel.clone();
-        let _ = spawn_thread("livetrans-store", move || {
+        let _ = spawn_thread("sabir-store", move || {
             let mut originals: HashMap<u64, String> = HashMap::new();
             for event in event_rx {
                 let event = match event {
@@ -245,7 +245,7 @@ impl Engine {
         let paused = Arc::new(AtomicBool::new(false));
         let (tx, rx) = sync_channel::<Vec<f32>>(96);
 
-        let asr = spawn_thread("livetrans-asr", {
+        let asr = spawn_thread("sabir-asr", {
             let stop = Arc::clone(&stop);
             let sink = sink.clone();
             let translate = Arc::clone(&self.translate);
@@ -823,7 +823,7 @@ fn spawn_capture(
         },
     };
 
-    spawn_thread("livetrans-capture", move || {
+    spawn_thread("sabir-capture", move || {
         if specs.len() == 1 {
             let spec = specs.into_iter().next().expect("one spec");
             if let Err(message) = capture_loop(tx, stop, paused, Some(sink.clone()), spec, true) {
@@ -838,8 +838,8 @@ fn spawn_capture(
         let (mic_tx, mic_rx) = sync_channel::<Vec<f32>>(32);
         let mut handles = Vec::new();
         for (spec, device_tx, name) in [
-            (specs[0].clone(), system_tx, "livetrans-capture-system"),
-            (specs[1].clone(), mic_tx, "livetrans-capture-mic"),
+            (specs[0].clone(), system_tx, "sabir-capture-system"),
+            (specs[1].clone(), mic_tx, "sabir-capture-mic"),
         ] {
             let stop = Arc::clone(&stop);
             let paused = Arc::clone(&paused);
@@ -1292,11 +1292,11 @@ mod tests {
     }
 
     fn whisper_test_dir() -> Option<PathBuf> {
-        if let Ok(dir) = std::env::var("LIVETRANS_WHISPER_TEST_DIR") {
+        if let Ok(dir) = std::env::var("SABIR_WHISPER_TEST_DIR") {
             return Some(PathBuf::from(dir));
         }
         let dir = std::env::temp_dir()
-            .join("livetrans-whisper-download-test")
+            .join("sabir-whisper-download-test")
             .join("whisper-small");
         discover(&dir).is_some().then_some(dir)
     }

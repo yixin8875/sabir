@@ -2,8 +2,8 @@ import { tr } from '@/lib/i18n'
 /**
  * Local session history and export.
  *
- * Rust keeps `livetrans.db` and writes exported files into the folder chosen
- * in settings (`Documents\Livetrans` by default); the WebView lists sessions,
+ * Rust keeps `sabir.db` and writes exported files into the folder chosen
+ * in settings (`Documents\Sabir` by default); the WebView lists sessions,
  * shows a read-only copy, renames titles and asks for an export.
  */
 

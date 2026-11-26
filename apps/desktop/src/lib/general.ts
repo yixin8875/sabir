@@ -18,7 +18,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   uiScale: 100,
 }
 
-const STORAGE_KEY = 'livetrans-general'
+const STORAGE_KEY = 'sabir-general'
 
 function normalize(settings: GeneralSettings): GeneralSettings {
   const scale = Number(settings.uiScale)

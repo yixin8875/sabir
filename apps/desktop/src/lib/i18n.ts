@@ -10,7 +10,7 @@ import { EN_MESSAGES } from './messages.en'
 
 export type Locale = 'zh-Hans' | 'en'
 
-const STORAGE_KEY = 'livetrans-locale'
+const STORAGE_KEY = 'sabir-locale'
 
 export function normalizeLocale(value: string | null | undefined): Locale {
   return value?.toLowerCase() === 'en' ? 'en' : 'zh-Hans'

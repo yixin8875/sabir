@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { LiveIndicator } from '@/components/livetrans/live-indicator'
+import { LiveIndicator } from '@/components/sabir/live-indicator'
 
 const floatView =
   new URLSearchParams(window.location.search).get('view') === 'float'

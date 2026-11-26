@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 
 $proc = Get-Process app -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $proc) { throw 'Livetrans is not running' }
+if (-not $proc) { throw 'Sabir is not running' }
 
 $ws = New-Object -ComObject WScript.Shell
 $ws.AppActivate($proc.Id) | Out-Null

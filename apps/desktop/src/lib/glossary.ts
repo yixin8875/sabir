@@ -67,7 +67,7 @@ export async function saveGlossary(glossary: Glossary): Promise<Glossary> {
   return invoke<Glossary>('save_glossary', { glossary })
 }
 
-const PORTABLE_FILE = 'livetrans-glossary.json'
+const PORTABLE_FILE = 'sabir-glossary.json'
 
 /**
  * Write every preset that has content to a shared JSON file. Returns the path
@@ -92,7 +92,7 @@ export async function exportGlossaryFile(
   }
   if (!isTauri()) {
     downloadJsonFile(PORTABLE_FILE, {
-      app: 'livetrans',
+      app: 'sabir',
       kind: 'glossary',
       version: 1,
       presets,

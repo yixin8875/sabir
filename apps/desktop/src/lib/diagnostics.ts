@@ -16,12 +16,12 @@ function stamp(): string {
  * touching local data.
  */
 export async function exportDiagnosticsBundle(): Promise<string | null> {
-  const defaultName = `livetrans-diagnostics-${stamp()}.zip`
+  const defaultName = `sabir-diagnostics-${stamp()}.zip`
   if (!isTauri()) {
     downloadJsonFile(defaultName.replace(/\.zip$/, '.json'), {
       note: 'browser preview: no local data is read',
       generatedAt: new Date().toISOString(),
-      app: { name: 'Livetrans', version: '0.1.0' },
+      app: { name: 'Sabir', version: '0.1.0' },
       store: { sessions: 2, segments: 10, integrity: 'ok' },
     })
     return tr('浏览器预览：已生成诊断摘要文件。')

@@ -12,10 +12,16 @@
       "url": "http://localhost:5180"
     },
     {
-      "name": "livetrans-5182",
+      "name": "sabir-5182",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "apps/desktop", "exec", "vite", "--port", "5182", "--strictPort"],
       "port": 5182
+    },
+    {
+      "name": "icon-concepts",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5185", "--directory", "design/icon-concepts"],
+      "port": 5185
     }
   ]
 }

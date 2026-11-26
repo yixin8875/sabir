@@ -1,4 +1,4 @@
-# Livetrans 方案文档 v0.4
+# Sabir 方案文档 v0.4
 ## 对标 Liveglot：本地优先、开源、非商业的实时双语字幕 + 会话问答
 
 > 版本 v0.4 · 2026-11-24
@@ -95,7 +95,7 @@
 | 12 | 多语言 UI + Linux 打包 | 7 | **P1** | 中文/英文优先；AppImage、deb、rpm |
 | 13 | 译文配音（TTS） | 6 | **P2 · 已实现** | 本机 Kokoro v1.1 逐句朗读译文（中英双语，模型按需下载）；音色/语速/落后加速待做 |
 | 14 | 笔记库 / 全文检索 | 6 | **P2 · 已实现** | 本机 FTS5 三元组索引跨场次检索原文与译文，bm25 排序 + 命中片段；向量/同义词待做 |
-| 15 | 插件 / 脚本接口 | 6 | **P2 · 已实现** | 每场一个 JSONL 事件流；本机脚本可返回改写译文；附带 `livetrans` CLI |
+| 15 | 插件 / 脚本接口 | 6 | **P2 · 已实现** | 每场一个 JSONL 事件流；本机脚本可返回改写译文；附带 `sabir` CLI |
 | 16 | 浮标 / 主题 / 置顶 | 5 | **P2** | 原生质感 |
 
 ### 为什么第 3 和第 8 条是"灵魂"
@@ -156,7 +156,7 @@
 5. **Linux 一等公民**：商业同类几乎不支持；开源用户高度重合。
 6. **coss ui 的可改造性**：组件源码在仓库里，能按"阅读器"气质调整，而不是被组件库锁死。
 7. **术语表/场景预设开源可分享**：导入导出 JSON，形成社区词表。
-8. **可脚本化**：导出 JSONL 事件流、`livetrans` CLI，方便接 Obsidian/Notion 自动化；脚本插件还能改写译文。
+8. **可脚本化**：导出 JSONL 事件流、`sabir` CLI，方便接 Obsidian/Notion 自动化；脚本插件还能改写译文。
 
 ## 1.6 明确不做什么
 
@@ -407,7 +407,7 @@ That tells us the buyers are still in control.
 > 引用：If the pullback holds above 4520...（20:23:19）
 ```
 
-- 文件名 `YYYY-MM-DD-HHmm-{slug}.md`；默认 `Documents/Livetrans`，设置可改。
+- 文件名 `YYYY-MM-DD-HHmm-{slug}.md`；默认 `Documents/Sabir`，设置可改。
 - 可选 YAML front matter；未翻译保留原文并标注 `<!-- untranslated -->`。
 
 ## 2.9 隐私、安全与数据去向
@@ -865,7 +865,7 @@ pnpm dlx shadcn@latest add @coss/ui
 
 - **sherpa-onnx 2.0.3 不需要 CMake。** 构建脚本取预编译库，本机没有 cmake/clang/ninja 也能编过。但 Windows 的静态库是 `/MT` 运行时，直接链进 `/MD` 的 Rust 程序会出现一批 CRT 符号未解析（实测 41 个）；改用 `default-features = false, features = ["shared"]`（`shared-MT` DLL 自带 CRT）后链接通过。发布包需要把 `onnxruntime.dll`、`sherpa-onnx-c-api.dll` 等一起带上，这一步待补。`whisper-rs` 仍依赖 CMake，留到 v0.3 的 whisper 档位再引入。
 - **坏代理会卡住构建脚本。** 本机系统代理是 `127.0.0.1:12000`，`ureq` 走它会连不上 GitHub。把 `sherpa-onnx-v2.0.3-win-x64-static-MT-Release-lib.tar.bz2` 放进 `src-tauri/vendor/sherpa/`，由 `src-tauri/.cargo/config.toml` 设 `SHERPA_ONNX_ARCHIVE_DIR`，构建即可离线复现；`cargo add/fetch` 时需清空 `HTTP(S)_PROXY`。
-- **模型**：`sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20` 的 int8 encoder（174MB）、decoder、joiner、tokens 已解压到 `apps/desktop/models/`，并在 `tauri.conf.json` 里声明为打包资源；开发态由 `CARGO_MANIFEST_DIR/../models` 自动发现，也可用 `LIVETRANS_MODEL_DIR` 覆盖。
+- **模型**：`sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20` 的 int8 encoder（174MB）、decoder、joiner、tokens 已解压到 `apps/desktop/models/`，并在 `tauri.conf.json` 里声明为打包资源；开发态由 `CARGO_MANIFEST_DIR/../models` 自动发现，也可用 `SABIR_MODEL_DIR` 覆盖。
 - **采集路径已落地**：`wasapi` 取默认 Render 端点，用 `Direction::Capture` + `EventsShared { autoconvert: true }` 打开回环，直接请求 16kHz 单声道 f32，省掉 rubato 这一层；Rust 只把电平（RMS/峰值）和句子文本经 `tauri::ipc::Channel` 发给 WebView，音频不出 Rust。
 - **前端**：coss 初始化成功；TypeScript 7 已移除 `baseUrl`，`paths` 相对 tsconfig 生效；`geist` 不再导出 CSS，改用 `@fontsource-variable/geist-mono`；开发端口改为 5180（本机 5173 被另一个项目占用）。
 - **已验证**：`pnpm build`、`cargo build` 均通过；浏览器预览下亮/暗主题、空态、逐字上屏、CJK 排版、电平条正常；桌面窗口里用系统语音朗读中英文、并叠加本机正在播放的音频，真实跑出了整句中英文字幕。该双语模型词表全大写，Rust 侧已做「句首大写、其余小写」归一化。
@@ -880,7 +880,7 @@ pnpm dlx shadcn@latest add @coss/ui
 - **本地 NMT（opus-mt en→zh，int8 ONNX）可用。** `Xenova/opus-mt-en-zh` 的 encoder / decoder / decoder_with_past 三张图加 `tokenizer.json` 放在 `models/translate/en-zh/`；`cargo test translate::nmt` 通过，示例句输出「大家早安,今天课开始」。两个坑：tokenizer.json 的 Precompiled normalizer 带 `null` 的 SentencePiece charsmap，Rust `tokenizers` 直接拒绝加载，加载时替换为 NFKC；`decoder_with_past` 只回吐 decoder 的 KV，encoder 交叉注意力 KV 必须从首步缓存原样带上。
 - **ort 依然不能静态链接。** 预编译 ONNX Runtime 是 `/MT`，与 `/MD` 的 Rust 二进制冲突（实测 42 个 CRT 符号）。改用 `ort` 的 `load-dynamic`，运行时 `init_from(vendor/onnxruntime/onnxruntime.dll)`；本机 1.28.2 的 DLL 可加载，发布包需要把它放到安装目录（`tauri.conf.json` 已映射）。
 - **路由与回退**：默认本地 NMT；可切本地 LLM（OpenAI 兼容，默认 `127.0.0.1:11434/v1`）或第三方（HTTPS + 用户 Key）。链路 remote → local LLM → NMT；第三方连续 3 次失败熔断 5 分钟；中文句子直接跳过（`passthrough`），避免中译中。
-- **授权与 Key**：第三方首次启用必须显式勾选，`remote_consent_at` 记录版本与时间；Key 只在 Rust 侧读取并放进请求头，WebView 只看得到 `apiKeySet` 布尔值。设置写在 `%APPDATA%/app.livetrans.desktop/settings.json`，Key 在系统钥匙串。
+- **授权与 Key**：第三方首次启用必须显式勾选，`remote_consent_at` 记录版本与时间；Key 只在 Rust 侧读取并放进请求头，WebView 只看得到 `apiKeySet` 布尔值。设置写在 `%APPDATA%/app.sabir.desktop/settings.json`，Key 在系统钥匙串。
 - **前端**：右上齿轮与底栏路由徽章打开设置 Sheet；行内显示译文与 `本地 NMT · 0.5s` 徽章；浏览器演示源同样发出翻译事件，已验证亮/暗主题与同意闸门（未同意时测试/保存禁用）。
 - **已验证**：`cargo test translate::`（NMT + SSE 解析）、`pnpm build`、`pnpm tauri dev` 可启动；浏览器预览中原文/译文对照、中文跳过、路由芯片正常。
 - **发布包已验证**（同日追加）：NSIS/MSI 均出包（475MB / 528MB），静默安装到本机后从安装目录启动，Ctrl+M + 系统 TTS 播放四句英文，字幕逐句收束并全部给出本地 NMT 译文。顺带发现 sherpa 的 `sherpa-onnx-c-api.dll` / `cxx-api.dll` 没有进安装器（只映射了 `onnxruntime.dll`），已补进 `tauri.conf.json` 并从 vendor 压缩包解到 `vendor/sherpa/`；重打包后安装目录根下 `app.exe`、`onnxruntime.dll`、两个 sherpa DLL 与 `models/` 齐全。
@@ -890,7 +890,7 @@ pnpm dlx shadcn@latest add @coss/ui
 
 识别模型不再随安装包分发，改为应用内下载与管理：
 
-- 新增 `asr_models.rs`：模型目录（中英双语 ~190MB / 英文 ~69MB / 中文轻量 ~30MB，来自 `hf-mirror.com` → `huggingface.co`，可用 `LIVETRANS_MODEL_BASE` 覆盖）、断点续传下载（`.part` + Range，逐文件校验大小）、`asr.json` 设置（`{ "model": <id 或绝对目录>, "language": "auto", "threads": 2 }`）、模型删除；权重落在 `%APPDATA%\app.livetrans.desktop\models\asr\<id>\`。
+- 新增 `asr_models.rs`：模型目录（中英双语 ~190MB / 英文 ~69MB / 中文轻量 ~30MB，来自 `hf-mirror.com` → `huggingface.co`，可用 `SABIR_MODEL_BASE` 覆盖）、断点续传下载（`.part` + Range，逐文件校验大小）、`asr.json` 设置（`{ "model": <id 或绝对目录>, "language": "auto", "threads": 2 }`）、模型删除；权重落在 `%APPDATA%\app.sabir.desktop\models\asr\<id>\`。
 - 引擎改为通过 `AsrService::engine_model()` 解析目录与线程数，目录内按 `encoder*.onnx` / `decoder*.onnx` / `joiner*.onnx` / `tokens.txt` 发现文件（编码器与 joiner 优先 int8）；未选模型时启动返回 `no_asr_model` 前缀错误，前端直接打开识别页。
 - 设置从右侧抽屉换成带左侧导航的窗口：识别（模型下载/选择/浏览/重新扫描/线程数/自定义目录）与翻译与聊天（原有翻译设置搬入）。未选模型时 Listen / Ctrl+M 打开识别页，管线 Speech 行显示缺模型。
 - 云端识别**不做**：音频与识别永远在本机，这是产品契约，不随竞品设置项照搬。
@@ -916,19 +916,19 @@ pnpm dlx shadcn@latest add @coss/ui
 - 设置新增 `modelsRoot`（识别与翻译各自可改下载位置，默认 `%APPDATA%\...\models\{asr,translate}`）与 `targetLang`（zh-Hans / zh-Hant / en；NMT 只支持简体，其他目标走 LLM 提示词）。`EndpointSettings` 增加 `name`，路由芯片显示预设名。
 - 翻译页重排：翻译成（NMT 时锁定简体中文）、不翻译只记录原文、翻译配置（三条路线保留卡片）、本地 NMT 的模型卡片（下载/取消/删除/进度/下载位置/浏览/重新扫描）、第三方快速填写（OpenAI / DeepSeek / OpenRouter）、本地快速填写（Ollama / LM Studio）、名称/模型/接口地址/API Key + 测试连接、上文句数、失败回退、测试一句。按产品契约未加竞品的云端识别/多配置档与聊天配置分档（问答后端尚未接通）。
 - **已验证**：`downloads_the_nmt_package`（421MB 实际下载 47.9s，文件大小与目录校验通过）；`empty_directory_is_not_installed`；前端 `tsc -b`；浏览器预览确认三种路线的布局与模型卡片渲染。
-- **安装版实测（同日）**：新安装包 NSIS 10.46MiB / MSI 14.99MiB（旧版约 365MB），MSI File 表只有 app.exe、onnxruntime.dll、sherpa 两个 DLL、silero_vad.onnx，无任何权重。静默装到 `D:\Livetrans` 后：清空 `asr.json` 启动 → Ctrl+M 直接打开 **设置 → 识别** 并显示「还没有可用的识别模型」，同目录残留的旧 `models\` 不被引用；恢复 `asr.json`（whisper-small）后 Ctrl+M 用 Whisper Small 听写三句英文（TTS 播放），字幕逐句出、译文报「无法连接 11434」——因为 NMT 未装，回退到默认 Ollama 地址，证明按需下载的路由生效；再把下载好的 NMT 包放进 `%APPDATA%\...\models\translate\en-zh` 重启，三句全部离线译出简体中文。管线 Speech 行原先写死「Zipformer streaming」，已改为按所选模型的 `kind` 显示「Whisper 整段」/「Zipformer streaming」。
+- **安装版实测（同日）**：新安装包 NSIS 10.46MiB / MSI 14.99MiB（旧版约 365MB），MSI File 表只有 app.exe、onnxruntime.dll、sherpa 两个 DLL、silero_vad.onnx，无任何权重。静默装到 `D:\Sabir` 后：清空 `asr.json` 启动 → Ctrl+M 直接打开 **设置 → 识别** 并显示「还没有可用的识别模型」，同目录残留的旧 `models\` 不被引用；恢复 `asr.json`（whisper-small）后 Ctrl+M 用 Whisper Small 听写三句英文（TTS 播放），字幕逐句出、译文报「无法连接 11434」——因为 NMT 未装，回退到默认 Ollama 地址，证明按需下载的路由生效；再把下载好的 NMT 包放进 `%APPDATA%\...\models\translate\en-zh` 重启，三句全部离线译出简体中文。管线 Speech 行原先写死「Zipformer streaming」，已改为按所选模型的 `kind` 显示「Whisper 整段」/「Zipformer streaming」。
 - 仍待验证：在安装版界面里点「下载」（与测试共用 `download.rs` 同一路径）、下载中断续传、以及超时/镜像切换的界面提示。
 
 ### Sprint 1 P0 补齐（2026-11-25，Windows 11）
 
 按「还有哪些功能没开发 → 先做P0」，补上四项离日常可用最近的缺口：
 
-- **会话持久化 + 导出**（`store.rs`）：`%APPDATA%\app.livetrans.desktop\livetrans.db`，WAL。`sessions(id, started_at, ended_at, title, source, asr_model, translate_route)`、`segments(session_id, seq, start_ms, end_ms, original, translated, route, provider, translate_ms, error)`。`Engine::start` 建会话行、`stop` 写 `ended_at`；独立 `livetrans-store` 写线程在事件去 UI 之前先落库（`Final`、`TranslationDone`、`TranslationError`）。`export_session` 写 `Documents\Livetrans\livetrans-<标题>.<md|jsonl|srt>`，没给 id 时取最近一场。前端字幕栏「导出」下拉三种格式。
+- **会话持久化 + 导出**（`store.rs`）：`%APPDATA%\app.sabir.desktop\sabir.db`，WAL。`sessions(id, started_at, ended_at, title, source, asr_model, translate_route)`、`segments(session_id, seq, start_ms, end_ms, original, translated, route, provider, translate_ms, error)`。`Engine::start` 建会话行、`stop` 写 `ended_at`；独立 `sabir-store` 写线程在事件去 UI 之前先落库（`Final`、`TranslationDone`、`TranslationError`）。`export_session` 写 `Documents\Sabir\sabir-<标题>.<md|jsonl|srt>`，没给 id 时取最近一场。前端字幕栏「导出」下拉三种格式。
 - **零配置引导**（`environment.rs`）：探测物理内存（`GetPhysicallyInstalledSystemMemory`）、核心数、Ollama（`GET /api/tags`，~800ms 超时、no_proxy）。内存 <8GB 推荐 `zh-14m`，否则推荐中英双语 Zipformer。识别页顶部在未就绪时给出该卡片，翻译页本地 LLM 卡片显示「Ollama 已连接」或安装提示。
 - **音频源选择**（`audio.rs`）：`audio.json` 存 `{ source, device }`；WASAPI 设备枚举（Render/Capture 两向），系统声音走默认或指定 Render 端点的回环，麦克风走 Capture 端点（无 keepalive 静音）。设置页两张卡片 + 设备下拉。契约不变：音频只在 Rust 进程内。
-- **字幕显示控制**：字号 13–24（localStorage `livetrans-caption-size`）、`Ctrl+P` 暂停/继续（capture 线程继续读包但丢弃，会话与字幕保留）、顶栏图钉置顶（`set_always_on_top`）。
+- **字幕显示控制**：字号 13–24（localStorage `sabir-caption-size`）、`Ctrl+P` 暂停/继续（capture 线程继续读包但丢弃，会话与字幕保留）、顶栏图钉置顶（`set_always_on_top`）。
 - **已验证**：`cargo test --lib` 12 通过 / 4 忽略（联网用例）；`tsc --noEmit` 无错；浏览器预览确认音源卡片与设备列表、字号缩放与持久化、导出菜单、暂停徽章与冻结计时。
-- **安装版实测（同日）**：NSIS 11.24MiB / MSI 15.96MiB（新增 rusqlite/chrono），静默装到 `D:\Livetrans`。启动即建 `livetrans.db`；Whisper Small 听写三句后库里出现 `sessions` 行（`source`/`asr_model`/`translate_route`=nmt）与三条 `segments`（NMT 逐句译文、`translate_ms` 1364/104/146）。暂停按钮/`Ctrl+P` 后朗读不落库，徽章显示「已暂停」，继续后恢复写入；`Esc` 停止写入 `ended_at`。UI Automation 点「导出」分别得到 Markdown（含时长/音源/模型元信息）、SRT、JSONL（session + segment 行）。图钉切换已验证 `WS_EX_TOPMOST`。音源卡切到「麦克风」会写 `audio.json` 并重启采集，本机没有可用麦克风端点时界面给出「找不到麦克风设备」错误后恢复系统声音。
+- **安装版实测（同日）**：NSIS 11.24MiB / MSI 15.96MiB（新增 rusqlite/chrono），静默装到 `D:\Sabir`。启动即建 `sabir.db`；Whisper Small 听写三句后库里出现 `sessions` 行（`source`/`asr_model`/`translate_route`=nmt）与三条 `segments`（NMT 逐句译文、`translate_ms` 1364/104/146）。暂停按钮/`Ctrl+P` 后朗读不落库，徽章显示「已暂停」，继续后恢复写入；`Esc` 停止写入 `ended_at`。UI Automation 点「导出」分别得到 Markdown（含时长/音源/模型元信息）、SRT、JSONL（session + segment 行）。图钉切换已验证 `WS_EX_TOPMOST`。音源卡切到「麦克风」会写 `audio.json` 并重启采集，本机没有可用麦克风端点时界面给出「找不到麦克风设备」错误后恢复系统声音。
 - **待做**：系统声 + 麦克风混音与按进程采集；会话库界面（列表/检索）；问答；术语表；TTS；托盘与自动更新；macOS/Linux。多 Provider 配置档已于同日补齐。安装器仍未签名。
 
 ### Sprint 1 P1 补齐（2026-11-25，Windows 11）
@@ -941,7 +941,7 @@ pnpm dlx shadcn@latest add @coss/ui
 - **会话库**（`store.rs` / `library-dialog.tsx`）：`list_sessions(query, limit)`——空查询按 id 倒序列全部；有查询时匹配标题、音源，或用 `EXISTS` 匹配字幕原文/译文；`delete_session` 先删 `segments` 再删 `sessions`，不存在时报错。界面为顶栏书本按钮打开的对话框：300ms 防抖搜索、场次行（标题/音源/条数）、只读详情（原文+译文+时间）、复用导出菜单（md/jsonl/srt）、删除需二次确认。
 - **本场问答**（`ask.rs` / `ask-panel.tsx`）：WebView 只发送当前屏幕上的 `AskLine { seq, start_ms, text }` 与问题；Rust 侧从尾部按行取上下文（上限 12,000 字符，行格式 `[seq] mm:ss 原文`），系统提示要求只依据转录、用简体中文、结论后标 `[行号]`。路由与翻译一致：第三方仅在「已同意 + 有 Key」时优先，失败回退本地 LLM，再失败报错误码；`AskEvent` 经 `Channel` 流式回传 `Delta` / `Done{route, provider, ms, citations}` / `Error`。引用解析只保留真正发送过的行号，界面把它们渲染成可对照时间戳的徽章。契约不变：音频不进问答，转发给第三方的只有问题与相关字幕。
 - **已验证**：`cargo test --lib` 13 通过 / 4 忽略（新增 `settings_roundtrip_and_clamp`、`searches_and_deletes_sessions`、`context_is_numbered_and_keeps_the_tail`、`citations_only_keep_lines_that_were_sent`）；`cargo test --lib ask::` 2 通过；`tsc` 无错。
-- **安装版实测（同日）**：NSIS 11.6MiB / MSI 16.4MiB，静默装到 `D:\Livetrans`。
+- **安装版实测（同日）**：NSIS 11.6MiB / MSI 16.4MiB，静默装到 `D:\Sabir`。
   - 按进程：用 TTS 的 PowerShell（pid 38848）发声，选「单个应用」后库中出现 `source=单个应用` 的场次（3 条，英文原文 + NMT 译文），其它系统声音未混入。
   - 混音：本机唯一的 Realtek 麦克风端点为 Unknown，无法单独采集；切「系统声音 + 麦克风」后系统那一路照常出字并落库（`source=系统声音 + 麦克风`），另一路失败只提示不中断——混音路径可用，麦克风半边受本机硬件限制。
   - 会话库：列表显示 4 场、条数与音源正确；搜索、详情、删除均可通过 UI Automation 操作；导出沿用 P0 已验证的三种格式。
@@ -952,13 +952,13 @@ pnpm dlx shadcn@latest add @coss/ui
 
 对应功能全景第 9 条。目标是可切换的多套场景预设（每套含一两句场景背景 + 行话表），让翻译统一译法、问答理解上下文，并尽量让识别偏向这些词：
 
-- **模型与存储**（`glossary.rs`）：`Glossary { activeId, presets: [{ id, name, scene, terms }] }` 存 `%APPDATA%\app.livetrans.desktop\glossary.json`。内置「通用（不限场景）」预设且始终排第一、不可承载内容；最多 20 个预设，名称 ≤40 字、scene ≤600 字、每预设术语 ≤200 条，保存时去空白、丢弃不完整行、按 source 小写去重、重复 id 自动加后缀；`activeId` 失效时回落到通用预设。旧版 `{scene, terms}` 文件读入后自动迁移成一个「我的场景」预设并设为当前。`prompt_block()` / `hotword_lines()` 都只取当前预设；热词写 app_data 目录的 `glossary-hotwords.txt`，一行一个原文；空表时删除旧文件。单测覆盖归一化/去重、通用预设约束、按当前预设取提示块与热词、热词文件往返、旧文件迁移与保存回读。
+- **模型与存储**（`glossary.rs`）：`Glossary { activeId, presets: [{ id, name, scene, terms }] }` 存 `%APPDATA%\app.sabir.desktop\glossary.json`。内置「通用（不限场景）」预设且始终排第一、不可承载内容；最多 20 个预设，名称 ≤40 字、scene ≤600 字、每预设术语 ≤200 条，保存时去空白、丢弃不完整行、按 source 小写去重、重复 id 自动加后缀；`activeId` 失效时回落到通用预设。旧版 `{scene, terms}` 文件读入后自动迁移成一个「我的场景」预设并设为当前。`prompt_block()` / `hotword_lines()` 都只取当前预设；热词写 app_data 目录的 `glossary-hotwords.txt`，一行一个原文；空表时删除旧文件。单测覆盖归一化/去重、通用预设约束、按当前预设取提示块与热词、热词文件往返、旧文件迁移与保存回读。
 - **翻译注入**（`TranslateService`）：服务启动时读 `glossary.json`，`attempt()` 为本地 LLM 与第三方两条路线把提示块追加到 system prompt，并要求“优先采用术语表给出的译法”；本地 NMT 逐句翻译不读取术语表（模型本身无法遵从）。保存术语表立即生效，无需重启。
 - **问答注入**（`ask.rs`）：`ask()` 在系统提示里追加本场场景与术语，并强调背景只用于理解、回答仍须依据转录并标注 `[行号]`。
 - **识别热词**（`engine.rs`）：`Engine::start` 把热词文件路径传给流式 ASR；`build_config` 有热词时改用 `modified_beam_search`（greedy 不支持热词）、`max_active_paths=4`、`hotwords_score=1.5`，`modeling_unit=cjkchar+bpe` 且 `bpe_vocab` 指向模型 `tokens.txt`。若模型拒绝热词，自动退回无热词配置再创建识别器，不影响开播。Whisper 没有热词接口，术语只作用于翻译与问答。
 - **界面**：设置「场景与术语」分页（`glossary-settings.tsx`）顶部是预设下拉 + 「新增预设」，下方编辑当前预设的名称、场景文本域（带字数）与成对术语（添加/删除、200 条上限），可两步确认删除非通用预设；底部沿用对话框统一保存，保存成功后把 Rust 归一化结果回填并清除未保存标记。首页空闲态按竞品布局改为居中「准备好就开始」：图标 + 说明 + 场景下拉 + 「管理…」+「开始录音」；切换场景只写 `activeId`，`useGlossary` 负责乐观更新与失败回读。浏览器预览用内存 demo。
 - **已验证**：`cargo test --lib` 20 通过 / 4 忽略（含 5 个 glossary 单测）；`tsc -b` 无错；浏览器预览新增预设、填写场景/术语、保存后首页下拉切换与重开保留均正常。
-- **安装版实测（同日）**：NSIS 11.30MiB 静默装到 `D:\Livetrans`。UI Automation 从首页「管理…」进入设置，新建预设「产品评审」（场景「讨论云原生与供应链，参与者会说 Kubernetes 与灰度发布。」、术语 `supply chain => 供应链`），保存后 `glossary.json` 为 `activeId=preset-…`、两个预设结构正确，首页下拉显示「产品评审」；在首页下拉切到「通用（不限场景）」后文件 `activeId=general`、按钮文字同步更新。把 `route` 临时指到本地假 OpenAI 流式服务（127.0.0.1:18082），用设置里的「测试一句」分别测试：通用预设时 system prompt 无场景/术语，切回「产品评审」后同一请求带上「场景背景：讨论云原生与供应链…」「supply chain => 供应链」；再次开始录音时 `glossary-hotwords.txt` 内容为 `supply chain`。测试后已恢复 `settings.json`、`audio.json` 并删除测试用 `glossary.json` 与假服务。
+- **安装版实测（同日）**：NSIS 11.30MiB 静默装到 `D:\Sabir`。UI Automation 从首页「管理…」进入设置，新建预设「产品评审」（场景「讨论云原生与供应链，参与者会说 Kubernetes 与灰度发布。」、术语 `supply chain => 供应链`），保存后 `glossary.json` 为 `activeId=preset-…`、两个预设结构正确，首页下拉显示「产品评审」；在首页下拉切到「通用（不限场景）」后文件 `activeId=general`、按钮文字同步更新。把 `route` 临时指到本地假 OpenAI 流式服务（127.0.0.1:18082），用设置里的「测试一句」分别测试：通用预设时 system prompt 无场景/术语，切回「产品评审」后同一请求带上「场景背景：讨论云原生与供应链…」「supply chain => 供应链」；再次开始录音时 `glossary-hotwords.txt` 内容为 `supply chain`。测试后已恢复 `settings.json`、`audio.json` 并删除测试用 `glossary.json` 与假服务。
 - **限制**：本地 NMT 不读术语表；Whisper 不支持热词；切换预设后翻译与问答立即生效，但识别热词要到下一次开始录音才更新；热词是否命中取决于所选 Zipformer 的词表大小写与分词（`bpe_vocab=tokens.txt`），未逐模型校准，效果欠佳时识别器会自动退回普通解码；术语表导入/导出见下方同日追加。
 
 ### 顶栏音源下拉（2026-11-25，同日追加）
@@ -969,7 +969,7 @@ pnpm dlx shadcn@latest add @coss/ui
 - **下拉行为**：列出系统声音、麦克风、系统声音 + 麦克风；尚未选择进程时「选择单个应用…」直接打开 **设置 → 识别**，已有 `processId` 时可直接切到该应用；「选择应用与设备…」始终进入识别页更换进程或输出/输入设备。开始中、采集中和暂停时下拉禁用，避免误以为当前采集已切换。
 - **回填**：识别设置里改音源通过新增的 `onAudioSaved` 立即回填 App 状态；底栏音源胶囊空闲时显示当前选择、采集时显示引擎回传的真实音源，并移除了旧的「Microphone v0.2」假入口。
 - **已验证**：`tsc -b` 无错；浏览器预览中下拉切换后顶栏与底栏同步、无进程时「选择单个应用…」打开识别页、设置内改音源后顶栏立即回填。
-- **安装版实测（同日）**：NSIS 11.30MiB 静默装到 `D:\Livetrans`。UI Automation 确认顶栏「音源」ComboBox 可选系统声音 / 麦克风 / 系统声音 + 麦克风：选麦克风后 `audio.json` 为 `source=microphone`，选混音后为 `source=both`；尚未选进程时选「选择单个应用…」会打开 **设置 → 识别** 且不改写 `audio.json`；在设置里点麦克风卡片（立即保存）再关闭，顶栏与底栏文案同步变为「麦克风」；最后选回「系统声音」。测试后已恢复 `audio.json`。
+- **安装版实测（同日）**：NSIS 11.30MiB 静默装到 `D:\Sabir`。UI Automation 确认顶栏「音源」ComboBox 可选系统声音 / 麦克风 / 系统声音 + 麦克风：选麦克风后 `audio.json` 为 `source=microphone`，选混音后为 `source=both`；尚未选进程时选「选择单个应用…」会打开 **设置 → 识别** 且不改写 `audio.json`；在设置里点麦克风卡片（立即保存）再关闭，顶栏与底栏文案同步变为「麦克风」；最后选回「系统声音」。测试后已恢复 `audio.json`。
 - **限制**：切换只对下一次开始录音生效；单个应用的进程与设备仍需在设置里选择。
 
 ### Provider 配置档（2026-11-25，同日追加）
@@ -983,7 +983,7 @@ pnpm dlx shadcn@latest add @coss/ui
 - **界面**：设置 → 翻译与聊天 → 第三方内新增「Provider 配置档」区：下拉切换、新增/删除（删除需点两次确认）、OpenAI / DeepSeek / OpenRouter 快速新建；名称、模型、接口地址、Key、同意勾选都作用于当前配置档。保存配置本身不发送文本，因此不需要同意；「测试连接」、翻译与问答才会拒绝没有同意的配置档。
 - **单测**：旧单套设置迁移为配置档且不回写旧字段；裁剪/去重/当前项回落；数量上限与默认档。`cargo test --lib` 23 通过 / 4 忽略。
 - **已验证**：`tsc -b` 无错；浏览器预览中新增空白档、OpenAI 预设（自动填 `gpt-4o-mini` 与地址）、下拉切换三套、删除需二次确认并回落到剩余档。
-- **安装版实测（同日）**：NSIS 11.32 MiB 静默装到 `D:\Livetrans`。旧 `settings.json`（单套 `remoteLlm` + `remoteConsentAt`）启动后在设置里显示为 DeepSeek 配置档，保存后文件只含 `providers` / `activeProviderId`，不再写回旧字段。新增「Test OpenAI」档（`http://127.0.0.1:18080/v1` / `test-model`），勾选同意并保存后，Windows 凭据管理器出现 `provider:<id>.app.livetrans.desktop` 条目；重启应用后「移除这个配置档的 Key」仍在。用本地假 OpenAI 流式服务验证「测试连接」：服务端收到 `Authorization: Bearer <user key>`、`model='test-model'`、2 条消息，界面显示「测试译文：早上好，各位。」。删除该配置档并保存后只剩 DeepSeek、`activeProviderId` 回落到 `provider-1`，凭据管理器条目同时消失；删除后的保存不再被「未同意」拦住（保存配置不发文本）。测试后已恢复 `settings.json` / `audio.json` 并清除测试凭据。
+- **安装版实测（同日）**：NSIS 11.32 MiB 静默装到 `D:\Sabir`。旧 `settings.json`（单套 `remoteLlm` + `remoteConsentAt`）启动后在设置里显示为 DeepSeek 配置档，保存后文件只含 `providers` / `activeProviderId`，不再写回旧字段。新增「Test OpenAI」档（`http://127.0.0.1:18080/v1` / `test-model`），勾选同意并保存后，Windows 凭据管理器出现 `provider:<id>.app.sabir.desktop` 条目；重启应用后「移除这个配置档的 Key」仍在。用本地假 OpenAI 流式服务验证「测试连接」：服务端收到 `Authorization: Bearer <user key>`、`model='test-model'`、2 条消息，界面显示「测试译文：早上好，各位。」。删除该配置档并保存后只剩 DeepSeek、`activeProviderId` 回落到 `provider-1`，凭据管理器条目同时消失；删除后的保存不再被「未同意」拦住（保存配置不发文本）。测试后已恢复 `settings.json` / `audio.json` 并清除测试凭据。
 - **限制**：配置档没有单独的「设为默认」概念，当前项就是唯一活跃项；导入/导出配置档见下方同日追加。
 
 ### 浮标开关与模型校验（2026-11-25，同日追加）
@@ -996,11 +996,11 @@ pnpm dlx shadcn@latest add @coss/ui
 
 ### 导出目录、会话改名、中英双语与三步引导（2026-11-25，同日追加）
 
-- **导出目录**：`general.rs` 新增 `GeneralSettings { exportDir, locale }`，存在 `%APPDATA%\app.livetrans.desktop\general.json`（先写临时文件再 rename）；`export_session` 读取该文件，未设置时用 `document_dir()/Livetrans`，保存设置时 `create_dir_all` 校验目录可建。设置 → 通用 → 导出显示当前目录（未设置时显示默认提示），可「浏览…」（`tauri-plugin-dialog`）或恢复默认。
+- **导出目录**：`general.rs` 新增 `GeneralSettings { exportDir, locale }`，存在 `%APPDATA%\app.sabir.desktop\general.json`（先写临时文件再 rename）；`export_session` 读取该文件，未设置时用 `document_dir()/Sabir`，保存设置时 `create_dir_all` 校验目录可建。设置 → 通用 → 导出显示当前目录（未设置时显示默认提示），可「浏览…」（`tauri-plugin-dialog`）或恢复默认。
 - **会话标题**：`store.rs::rename_session` 去空白、拒绝空标题、截到 80 字符，返回更新后的 `SessionMeta`；`rename_session` 命令注册。会话库详情标题旁加铅笔按钮，就地编辑：Enter 保存、Esc 取消（用 ref 跳过随之而来的 blur），失败显示在顶部错误条；列表与详情同步更新。浏览器预览的 `renameSession` 直接改演示数据。
-- **i18n**：以中文原文作键，`src/lib/i18n.ts` 提供 `tr(zh, params?)`（`{name}` 插值）与 `localize(text)`（Rust 文本的精确匹配翻译）；英文表 `messages.en.ts` 由脚本从调用点提取生成，共 284 条。语言存 `localStorage["livetrans-locale"]` 并由 Rust `general.json` 作为权威值：启动时同步、设置里切换后重载窗口（模块级选项表在 import 时构建）。设置 → 通用 → 界面语言选择简体中文 / English，保存后立即重载。
+- **i18n**：以中文原文作键，`src/lib/i18n.ts` 提供 `tr(zh, params?)`（`{name}` 插值）与 `localize(text)`（Rust 文本的精确匹配翻译）；英文表 `messages.en.ts` 由脚本从调用点提取生成，共 284 条。语言存 `localStorage["sabir-locale"]` 并由 Rust `general.json` 作为权威值：启动时同步、设置里切换后重载窗口（模块级选项表在 import 时构建）。设置 → 通用 → 界面语言选择简体中文 / English，保存后立即重载。
 - **Rust 侧文案**：`general::is_chinese()` / `general::pick(zh, en)`；识别模型目录（5 个模型的标题与说明）、环境推荐语、Markdown 导出表头与失败注释、通用预设名（前端按 `GENERAL_ID` 映射）、引擎状态/错误（暂停、Whisper 加载、VAD、采集公告、设备错误）、导出/改名/无会话等命令错误都按语言输出。已存会话里的中文音源字段由前端 `localize()` 兜底。
-- **三步引导**：`onboarding.tsx`，首次启动（`localStorage["livetrans-onboarded"]` 未设）显示：① 边界说明（音频不出机、边说边出字、会话与导出在本机）；② 选择默认音源（写 `audio.json` 的 `source`）；③ 推荐识别模型（显示大小与安装状态，可直接下载并自动选中；也可「稍后再选」）。完成后写标记并关闭；不阻塞主界面，浮标窗口不渲染它。
+- **三步引导**：`onboarding.tsx`，首次启动（`localStorage["sabir-onboarded"]` 未设）显示：① 边界说明（音频不出机、边说边出字、会话与导出在本机）；② 选择默认音源（写 `audio.json` 的 `source`）；③ 推荐识别模型（显示大小与安装状态，可直接下载并自动选中；也可「稍后再选」）。完成后写标记并关闭；不阻塞主界面，浮标窗口不渲染它。
 - **已验证**：`cargo test` 27 通过 / 5 忽略（含 `general::tests::settings_round_trip`、`store::tests::renames_a_session_and_rejects_blank_titles`）；`tsc -b` 与 `pnpm build` 无错；用 headless Edge + CDP 驱动浏览器预览逐步截图：三步引导（欢迎/音源/模型）、中文设置页、切换 English 后主界面与设置页全英文、会话库改名成功（标题与列表同步）；`Interface language` 显示 English、`Export` 区块出现。release 构建产出 NSIS 11.41 MiB / MSI 16.20 MiB。
 - **安装版实测（同日）**：以 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9224` 运行 `target/release/app.exe`，用 CDP 驱动：首次启动显示三步引导，逐步点过并「完成」；打开设置看见「界面语言」与「导出」两个区块；切到 English 后窗口重载、主界面与设置页为英文；再选「Simplified Chinese」保存，`general.json` 回到 `zh-Hans`，界面恢复。测试写入的 `general.json` 与临时调试端口在测试后删除。
 - **限制**：英文未覆盖少数底层错误与系统设备名；已存旧会话的中文 `source` 视词典匹配程度翻译；语言切换靠整窗重载；引导标记存 localStorage；导出目录的原生选择框未在 CDP 里点选（只验证了保存与默认值回退）。
@@ -1009,7 +1009,7 @@ pnpm dlx shadcn@latest add @coss/ui
 
 对应功能全景里的「术语分享」与会话库的跨场次能力，完成三件事：
 
-- **术语表导入/导出**（`glossary.rs`）：`export_portable` 写 `{ app: "livetrans", kind: "glossary", version: 1, presets: [{ name, scene, terms: [{ source, target }] }] }`，只含用户预设（不含「通用」）、已归一化并丢弃空行，没有可导出内容时报错；`import_portable` 同时接受这份格式与旧的 `glossary.json` 结构，生成 `import-N` 新 id、丢弃「通用」与不完整术语。错误按界面语言输出。单测覆盖导出不含 id/通用预设、旧格式读入、空文件与坏文件被拒绝。
+- **术语表导入/导出**（`glossary.rs`）：`export_portable` 写 `{ app: "sabir", kind: "glossary", version: 1, presets: [{ name, scene, terms: [{ source, target }] }] }`，只含用户预设（不含「通用」）、已归一化并丢弃空行，没有可导出内容时报错；`import_portable` 同时接受这份格式与旧的 `glossary.json` 结构，生成 `import-N` 新 id、丢弃「通用」与不完整术语。错误按界面语言输出。单测覆盖导出不含 id/通用预设、旧格式读入、空文件与坏文件被拒绝。
 - **配置档导入/导出**（`translate/mod.rs`）：格式 `{ app, kind: "provider-profiles", version: 1, profiles: [{ name, baseUrl, model }] }`；导出只取已填地址与模型的配置档，明确去掉 id、`consentAt` 与 Key（Key 本来只存系统钥匙串）。导入丢弃缺地址/模型的条目、id 置空（界面再加 `provider-import-…` 新 id）、`consentAt` 置空、名称缺失补「服务商 n」，总数仍受 10 套上限约束。单测覆盖导出无 Key/同意/id、导入跳过不完整条目。
 - **文件 IO 与对话框**：前端用 `@tauri-apps/plugin-dialog` 的 `open` / `save`（`dialog:default`），Rust 负责读写 JSON。两个设置页都先把导入结果合并进未保存的 `form`：保留现有内容、新预设成为当前项、清空 Key/同意/测试结果并提示「保存后生效」，点「保存」才落盘，避免导入直接覆盖现有数据。浏览器预览用 `portable-file.ts`：导出走 Blob 下载，导入用隐藏 `<input type=file>` 解析，无 Tauri 时也能演示。
 - **跨场次检索**（`store.rs` / `ask.rs`）：`TranscriptHit { session_id, title, started_at, seq, start_ms, original, translated }`；`segments_matching` 用 `LIKE ?1 ESCAPE '\'` 同时匹配原文与译文，`recent_segments` 取最近行。问题先做词提取：ASCII 按单词去停用词；CJK 取相邻二元组并跳过「的了是在和与就都也个吗呢吧啊哦我你他她它们这那」等，最多 12 个词。每个词最多取 60 行、每场最多 12 行、总共 40 行，按命中词数排序后按场次新旧编号；一个词都没命中时回退到最近 30 行（场次倒序、场内正序）。
@@ -1021,7 +1021,7 @@ pnpm dlx shadcn@latest add @coss/ui
 ### 译文配音（TTS）（2026-11-25，同日追加）
 
 - **模型**：sherpa-onnx 2.0.3 的 `OfflineTts` + Kokoro v1.1 多语种（`csukuangfj/kokoro-multi-lang-v1_1`）。只取 5 个文件：`model.onnx`（325,561,476 B）、`voices.bin`（53,790,720 B，103 个音色）、`tokens.txt`、`lexicon-us-en.txt`（5,956,885 B）、`lexicon-zh.txt`（2,120,131 B），合计 387,430,323 B（约 369.5 MiB）。v2.0.0 起 `data_dir`（espeak-ng-data / jieba）已废弃，中英双语靠两份 lexicon，不再下载几百个小文件。
-- **下载与校验**（`voice.rs` + `download.rs`）：沿用识别/翻译的下载站选择（先 `hf-mirror.com` 再 `huggingface.co`，`LIVETRANS_MODEL_BASE` 可覆盖），`.part` 续传，按仓库公布的 SHA-256 校验；完成后写入 `%APPDATA%\app.livetrans.desktop\models\tts\kokoro-zh-en-v1.1\`。界面有进度、取消与两步确认的删除。
+- **下载与校验**（`voice.rs` + `download.rs`）：沿用识别/翻译的下载站选择（先 `hf-mirror.com` 再 `huggingface.co`，`SABIR_MODEL_BASE` 可覆盖），`.part` 续传，按仓库公布的 SHA-256 校验；完成后写入 `%APPDATA%\app.sabir.desktop\models\tts\kokoro-zh-en-v1.1\`。界面有进度、取消与两步确认的删除。
 - **设置**：`voice.json` 只有 `{ enabled }`，默认关闭；保存时若 `enabled=true` 但模型不完整会报错拒绝。Rust `VoiceService` 懒加载 `Arc<OfflineTts>`（`num_threads=2`），首次朗读才把模型读进内存。
 - **合成与播放**：`synthesize_voice(text, lang)` 去掉 NUL、截到 600 字符，按语言选音色——`lang` 以 `en` 开头用 `af_maple`（sid 0），否则用中文女声 `zf_001`（sid 3），生成 16-bit 单声道 WAV 后 base64 回传；在 `spawn_blocking` 里跑，不阻塞命令线程。前端 `use-voice.ts` 串行合成→播放（`Audio('data:audio/wav;base64,…')`），队列上限 6，`speak()` 只在已安装且开关打开时入队；停止录音、暂停、卸载时清空队列并停声。浏览器预览没有 Tauri，退化为 Web Speech API，仅用于界面演示。
 - **接入**：`use-engine` 新增 `onTranslationDone`，在 `translationDone` 且 `route !== 'passthrough'` 时回调；`App` 用 `voice.speak(text, translate.settings.targetLang)`。设置对话框新增「配音」页（侧栏 Volume2 图标），布局按设计稿：顶部说明、语音模型卡片（标题 / 已安装或下载中徽章 / 大小与 103 音色文案 / 说明 / 下载-取消-删除）、「朗读译文」开关与引导文案；仍走暂存表单，只有点「保存」才调用 `saveVoiceSettings`，错误留在面板里。
@@ -1036,9 +1036,9 @@ pnpm dlx shadcn@latest add @coss/ui
 - **全文索引**（`store.rs`）：`segments_fts` 是 FTS5 外部内容表，`content='segments'`、`content_rowid='id'`、`tokenize='trigram'`，索引 `original` 与 `translated`；`segments_fts_ai/ad/au` 三个触发器随字幕增删改同步。`open()` 读 `PRAGMA user_version`，旧库首次打开时执行一次 `INSERT INTO segments_fts(segments_fts) VALUES('rebuild')` 并写入 version 1，升级不需要用户操作。
 - **检索**（`SearchHit` / `search_fulltext`）：按空白拆词，保留 ≥3 个字符的词，拼成转义后的短语 `MATCH`（`"` 加倍），join 回 `segments` 与 `sessions`，`ORDER BY rank` 取 `bm25` 负分；可选按 `session_id` 过滤。结果含场次标题、开始时间、`seq`、`start_ms`、原文、译文、分数与片段；片段优先取译文，取首个命中词前 24 字、总长 90 字的窗口并加省略号。不足 3 字的查询（如 `AI`）回退 `segments_matching` 的 `LIKE` 包含匹配，分数记 0。`render` 抽出 Markdown / JSONL / SRT 三种导出供 CLI 复用。
 - **界面**（`library-search.tsx`）：会话库顶栏新增「全文检索 / 返回会话」切换，右栏输入 220ms 防抖后调用 `search_library`；结果卡片显示标题、`mm:ss`、原文与不同则显示片段，点击打开对应场次并滚动到 `segment-<seq>`。空态、加载、错误与说明文案齐全，输入提示明确「英文单词或至少 3 个中文字」。
-- **插件与事件流**（`plugins.rs`）：`PluginSettings { enabled, command }` 存在 `%APPDATA%\app.livetrans.desktop\plugins.json`，命令经系统 shell（Windows `cmd /C`，其它 `sh -c`）启动，带 `PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8`，Windows 用 `CREATE_NO_WINDOW` 避免闪控制台；stdin 收 JSONL，stdout 读 `{"type":"rewrite","id":n,"text":"…"}`，按 `id` 用 400ms `recv_timeout` 路由回等待线程。每场监听在 `streams\<会话 id>.jsonl` 写同一份事件（`session` 头、`status/partial/final/translationDelta/translationDone/translationError/error`、`sessionEnd`，均带 `sessionId`，电平事件跳过）；不做插件时也照写。`probe` 为「测试命令」临时启动一次并返回是否有改写。
+- **插件与事件流**（`plugins.rs`）：`PluginSettings { enabled, command }` 存在 `%APPDATA%\app.sabir.desktop\plugins.json`，命令经系统 shell（Windows `cmd /C`，其它 `sh -c`）启动，带 `PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8`，Windows 用 `CREATE_NO_WINDOW` 避免闪控制台；stdin 收 JSONL，stdout 读 `{"type":"rewrite","id":n,"text":"…"}`，按 `id` 用 400ms `recv_timeout` 路由回等待线程。每场监听在 `streams\<会话 id>.jsonl` 写同一份事件（`session` 头、`status/partial/final/translationDelta/translationDone/translationError/error`、`sessionEnd`，均带 `sessionId`，电平事件跳过）；不做插件时也照写。`probe` 为「测试命令」临时启动一次并返回是否有改写。
 - **接入**（`engine.rs`）：store 线程缓存每句 `Final` 原文；`TranslationDone` 在非 passthrough 且有文本时先问插件改写，再按改写后的译文写库、发 UI 与触发配音，所以导出、会话库与朗读都看到改写结果。`stop` 在 ASR 线程结束后发 `sessionEnd` 并结束进程。
-- **CLI**（`cli.rs` + `bin/livetrans.rs`）：Cargo feature `cli` + `required-features`，默认应用构建不受影响。`LIVETRANS_DB` 可覆盖数据库；子命令 `list`（表格或 `--json`）、`search`（每行一个 `SearchHit` JSON）、`show --format md|jsonl|srt`、`export`（默认 `livetrans-<id>.<fmt>`）、`stream [--follow]`（打印或每 250ms 跟随最新场次，处理截断）。
+- **CLI**（`cli.rs` + `bin/sabir.rs`）：Cargo feature `cli` + `required-features`，默认应用构建不受影响。`SABIR_DB` 可覆盖数据库；子命令 `list`（表格或 `--json`）、`search`（每行一个 `SearchHit` JSON）、`show --format md|jsonl|srt`、`export`（默认 `sabir-<id>.<fmt>`）、`stream [--follow]`（打印或每 250ms 跟随最新场次，处理截断）。
 - **已验证**：`cargo test --lib` 45 通过 / 6 忽略（新增全文检索双语命中、场次过滤、2 字回退、删除清理、旧库重建；插件设置归一化/拒绝空命令启用、事件流内容、无插件不改写、Windows 回声脚本 probe）；`cargo check --all-targets --features cli`、`tsc -b`、`pnpm build` 通过。CLI 用临时 SQLite 夹具逐条跑过 list/search/show/stream/export/help。浏览器预览实测：插件页开关在命令为空时禁用、填命令后可开、测试命令返回预览提示、保存后重开仍在、空命令 + 启用被拒；中文「灰度」与英文 `kubernetes` 都能出结果并点开对应句；切 English 后两页文案完整。英文词典提取 359 条、缺失 0。
 - **限制**：trigram 每词至少 3 字符，短词只能 `LIKE` 扫行；没有向量/同义词/模糊匹配，片段是截取而非原文高亮；`search_transcripts`（跨场次问答）仍走旧的 LIKE 检索，两套并存。插件单命令、每场一个进程，改写只作用于译文且等待上限 400ms，超时/空输出/与原译文相同就不改，脚本崩溃后本场不再改写；stdout 必须 UTF-8，非 JSON 与 stderr 只进日志。浏览器预览不运行本机脚本。CLI 只读，不含写入/删除。
 
@@ -1046,9 +1046,9 @@ pnpm dlx shadcn@latest add @coss/ui
 
 对应功能全景第 16 条与发布准备，一次补齐四块：
 
-- **托盘与关闭到托盘**（`tray.rs`、`lib.rs`、`general.rs`）：`TrayIconBuilder::with_id("main-tray")` 用应用图标，tooltip `Livetrans`，菜单「显示主窗口 / 设置… / 退出 Livetrans」，`show_menu_on_left_click(false)` 让左键单击直接恢复窗口；恢复时 `show` + `unminimize` + `set_focus`。`WindowEvent::CloseRequested` 先取 `Engine` 并 `stop()`（隐私：不在后台继续采集），再读 `general.json` 的 `minimizeToTray`：为真时 `api.prevent_close()` 并 `window.hide()`，为假时 `app.exit(0)`。`GeneralSettings` 新增 `#[serde(default = "default_minimize_to_tray")] minimize_to_tray: bool`，默认 `true`，手写 `Default` 保留“文件缺失时默认开启”；前端 `general-settings.tsx` 在「显示录音浮标」下方加同名开关，`app-settings.ts` 归一化 `minimizeToTray !== false`。
+- **托盘与关闭到托盘**（`tray.rs`、`lib.rs`、`general.rs`）：`TrayIconBuilder::with_id("main-tray")` 用应用图标，tooltip `Sabir`，菜单「显示主窗口 / 设置… / 退出 Sabir」，`show_menu_on_left_click(false)` 让左键单击直接恢复窗口；恢复时 `show` + `unminimize` + `set_focus`。`WindowEvent::CloseRequested` 先取 `Engine` 并 `stop()`（隐私：不在后台继续采集），再读 `general.json` 的 `minimizeToTray`：为真时 `api.prevent_close()` 并 `window.hide()`，为假时 `app.exit(0)`。`GeneralSettings` 新增 `#[serde(default = "default_minimize_to_tray")] minimize_to_tray: bool`，默认 `true`，手写 `Default` 保留“文件缺失时默认开启”；前端 `general-settings.tsx` 在「显示录音浮标」下方加同名开关，`app-settings.ts` 归一化 `minimizeToTray !== false`。
 - **自动更新**（`updater.ts`、`about-settings.tsx`、`Cargo.toml`、`capabilities/default.json`、`tauri.conf.json`）：Rust 侧注册 `tauri_plugin_updater::Builder` 与 `tauri_plugin_process`；JS 侧动态 import `@tauri-apps/plugin-updater` / `plugin-process`，`checkForAppUpdate()` 返回 `{version, currentVersion, date?, body?}`，`installAppUpdate(onProgress)` 把 Started/Progress 事件换算成 0–1 进度，`relaunchApp()` 负责重启。`updatesSupported()` 在浏览器预览返回 false，按钮禁用并显示说明。设置新增「关于与诊断」页（`Info` 图标），显示版本、检查/下载/安装/重启四态与错误文案。公钥来自 `tauri signer generate`，私钥不进仓库；端点仍为 `OWNER` 占位符，发布前替换。
-- **诊断包**（`diagnostics.rs`、`store.rs`、`diagnostics.ts`）：`export_diagnostics` 命令把 `StoreHealth {sessions, segments, latest, userVersion, integrity}`、版本、OS/架构、配置路径、模型安装探测（`models/translate/en-zh`、`models/tts/kokoro-zh-en-v1.1` 下是否存在 `.onnx`）写成 `summary.json`；`SETTINGS` 复制 general/audio/asr/settings(translate)/voice/plugins 六份配置并递归删除 `key/apikey/secret/token/password/consent/consentat/command` 字段；日志每个文件只取尾部 256KB；打包用 `zip` crate 的 Deflated。明确不含字幕、音频、SQLite、术语表、事件流与 API Key，zip 内附 `README.txt` 说明。前端用 `tauri-plugin-dialog` 的 `save` 选路径（默认 `livetrans-diagnostics-YYYY-MM-DD-HH-mm-ss.zip`），预览模式返回一段合成 JSON 而不读本机数据。
+- **诊断包**（`diagnostics.rs`、`store.rs`、`diagnostics.ts`）：`export_diagnostics` 命令把 `StoreHealth {sessions, segments, latest, userVersion, integrity}`、版本、OS/架构、配置路径、模型安装探测（`models/translate/en-zh`、`models/tts/kokoro-zh-en-v1.1` 下是否存在 `.onnx`）写成 `summary.json`；`SETTINGS` 复制 general/audio/asr/settings(translate)/voice/plugins 六份配置并递归删除 `key/apikey/secret/token/password/consent/consentat/command` 字段；日志每个文件只取尾部 256KB；打包用 `zip` crate 的 Deflated。明确不含字幕、音频、SQLite、术语表、事件流与 API Key，zip 内附 `README.txt` 说明。前端用 `tauri-plugin-dialog` 的 `save` 选路径（默认 `sabir-diagnostics-YYYY-MM-DD-HH-mm-ss.zip`），预览模式返回一段合成 JSON 而不读本机数据。
 - **发布工程**（`.github/workflows/release.yml`、`scripts/`、`RELEASING.md`）：`fetch-vendor.ps1` 从 k2-fsa 与 NuGet 取 sherpa-onnx 两个 DLL、`onnxruntime.dll` 与 `silero_vad.onnx`；`set-version.mjs` 写/校验三处版本；workflow 在 `v*` 标签或手动触发时检查三处版本一致、标签等于版本、跑单测，再由 `tauri-action` 用 `pnpm tauri` 构建 NSIS/MSI 与签名更新文件，创建草稿 Release。`RELEASING.md` 记录一次性准备（改 `OWNER`、配置两个签名 secret、备份私钥）、发布命令、发布后自检与回滚方式。仓库用 Git 管理：`main` 基线，功能分支 `feature/tray-updater-diagnostics`。
 - **已验证**：`cargo check --offline`、`cargo check --all-targets --features cli --offline` 通过；`cargo test --lib --offline` 46 通过 / 6 忽略（新增 `general` 托盘字段往返、`diagnostics` 脱敏保留布局）；`tsc -b` 通过；`node scripts/set-version.mjs --check` 三处一致；下载 URL 用 HEAD 实测（sherpa 与 Silero 200；ONNX Runtime 改走 NuGet）。
 - **限制**：更新只手动检查，无启动自检、后台轮询或静默安装；安装后必须重启。`OWNER` 未替换前检查更新会 404。托盘图标不随录音状态变化；关闭到托盘会中断当前录音。诊断包不含用户内容，但日志可能带会话标题/路径等元数据；脱敏按字段名，未来新增的敏感字段名需同步 `is_secret_key`。CI 只构建 Windows；正式发布前需先跑通一次标签流程并做安装冒烟，`TAURI_SIGNING_PRIVATE_KEY` 未配置时 workflow 会失败。

@@ -4,7 +4,7 @@
 //! translated by the primary route the user picked, then — if it fails and
 //! fallback is on — by the other local route. Remote providers only run when
 //! the user stored a key and explicitly consented; the request goes straight
-//! from this process to the provider, never through a Livetrans server.
+//! from this process to the provider, never through a Sabir server.
 //!
 //! Only the finished sentence (plus a few preceding sentences as context for
 //! LLM routes) leaves the machine. Audio never does.
@@ -31,7 +31,10 @@ use crate::glossary::{self, Glossary};
 use llm::LlmEndpoint;
 use nmt::NmtTranslator;
 
-const KEYRING_SERVICE: &str = "app.livetrans.desktop";
+const KEYRING_SERVICE: &str = "app.sabir.desktop";
+/// Pre-rename service name. Keys stored under it are still readable so the
+/// rename does not silently drop credentials; writes always use the new name.
+const LEGACY_KEYRING_SERVICE: &str = "app.livetrans.desktop";
 /// Keyring entry used by the pre-profile single-provider format.
 const LEGACY_KEYRING_USER: &str = "translate-api-key";
 const PROVIDER_KEYRING_PREFIX: &str = "provider:";
@@ -522,7 +525,7 @@ impl TranslateService {
         }
         let worker = Arc::clone(&service);
         let _ = thread::Builder::new()
-            .name("livetrans-translate".to_string())
+            .name("sabir-translate".to_string())
             .spawn(move || worker.worker_loop(rx));
 
         service
@@ -866,7 +869,7 @@ impl TranslateService {
     fn nmt_dir(&self) -> Result<PathBuf, TranslateFailure> {
         let settings = self.settings();
         let mut candidates = Vec::new();
-        if let Ok(dir) = std::env::var("LIVETRANS_TRANSLATE_DIR") {
+        if let Ok(dir) = std::env::var("SABIR_TRANSLATE_DIR") {
             candidates.push(PathBuf::from(dir));
         }
         candidates.push(self.model_root(&settings).join(models::NMT_DIR_NAME));
@@ -938,7 +941,7 @@ impl TranslateService {
         let root = self.model_root(&settings);
         let service = Arc::clone(self);
         thread::Builder::new()
-            .name("livetrans-translate-download".to_string())
+            .name("sabir-translate-download".to_string())
             .spawn(move || {
                 let outcome = models::download(&root, &flag, &mut |event| {
                     let _ = channel.send(event);
@@ -1269,6 +1272,13 @@ fn provider_keyring_entry(provider_id: &str) -> Result<keyring::Entry, String> {
     .map_err(|err| err.to_string())
 }
 
+fn read_keyring_password(service: &str, user: &str) -> Option<String> {
+    keyring::Entry::new(service, user)
+        .ok()
+        .and_then(|entry| entry.get_password().ok())
+        .filter(|key| !key.trim().is_empty())
+}
+
 pub struct AskTargets {
     pub local: EndpointSettings,
     pub remote: EndpointSettings,
@@ -1280,10 +1290,9 @@ pub(crate) fn provider_api_key(provider_id: &str) -> Option<String> {
     if provider_id.trim().is_empty() {
         return None;
     }
-    provider_keyring_entry(provider_id)
-        .ok()
-        .and_then(|entry| entry.get_password().ok())
-        .filter(|key| !key.trim().is_empty())
+    let user = format!("{PROVIDER_KEYRING_PREFIX}{}", provider_id.trim());
+    read_keyring_password(KEYRING_SERVICE, &user)
+        .or_else(|| read_keyring_password(LEGACY_KEYRING_SERVICE, &user))
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1338,7 +1347,7 @@ pub fn export_provider_profiles(
         .to_string());
     }
     let document = PortableProviderProfiles {
-        app: Some("livetrans".to_string()),
+        app: Some("sabir".to_string()),
         kind: Some("provider-profiles".to_string()),
         version: Some(1),
         profiles,
@@ -1423,22 +1432,31 @@ pub fn import_provider_profiles(path: &Path) -> Result<Vec<ProviderProfile>, Str
 }
 
 fn store_provider_key(provider_id: &str, key: &str) -> Result<(), String> {
+    let user = format!("{PROVIDER_KEYRING_PREFIX}{}", provider_id.trim());
+    // Drop the pre-rename entry either way: a fresh key replaces it, and a
+    // cleared key must not stay readable under the legacy service.
+    let legacy = keyring::Entry::new(LEGACY_KEYRING_SERVICE, &user);
     let entry = provider_keyring_entry(provider_id)?;
     if key.trim().is_empty() {
         let _ = entry.delete_credential();
+        if let Ok(legacy) = legacy {
+            let _ = legacy.delete_credential();
+        }
         Ok(())
     } else {
         entry
             .set_password(key.trim())
-            .map_err(|err| err.to_string())
+            .map_err(|err| err.to_string())?;
+        if let Ok(legacy) = legacy {
+            let _ = legacy.delete_credential();
+        }
+        Ok(())
     }
 }
 
 fn legacy_api_key() -> Option<String> {
-    legacy_keyring_entry()
-        .ok()
-        .and_then(|entry| entry.get_password().ok())
-        .filter(|key| !key.trim().is_empty())
+    read_keyring_password(KEYRING_SERVICE, LEGACY_KEYRING_USER)
+        .or_else(|| read_keyring_password(LEGACY_KEYRING_SERVICE, LEGACY_KEYRING_USER))
 }
 
 /// Copy the pre-profile single key to the migrated profile, then remove the
@@ -1555,7 +1573,7 @@ mod tests {
     #[test]
     fn provider_profiles_export_without_keys_consent_or_ids() {
         let dir = std::env::temp_dir().join(format!(
-            "livetrans-provider-portable-{}",
+            "sabir-provider-portable-{}",
             std::process::id()
         ));
         let _ = std::fs::remove_dir_all(&dir);
@@ -1591,7 +1609,7 @@ mod tests {
     #[test]
     fn importing_provider_profiles_skips_incomplete_entries() {
         let dir = std::env::temp_dir().join(format!(
-            "livetrans-provider-import-{}",
+            "sabir-provider-import-{}",
             std::process::id()
         ));
         let _ = std::fs::remove_dir_all(&dir);
@@ -1622,8 +1640,8 @@ mod tests {
     #[test]
     #[ignore = "touches the OS credential store"]
     fn provider_keys_are_stored_per_profile() {
-        let a = "livetrans-selftest-a";
-        let b = "livetrans-selftest-b";
+        let a = "sabir-selftest-a";
+        let b = "sabir-selftest-b";
         let _ = store_provider_key(a, "");
         let _ = store_provider_key(b, "");
 

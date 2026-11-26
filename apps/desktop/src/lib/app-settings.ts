@@ -21,7 +21,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   minimizeToTray: true,
 }
 
-const STORAGE_KEY = 'livetrans-app-settings'
+const STORAGE_KEY = 'sabir-app-settings'
 
 export function normalizeAppSettings(
   value: Partial<AppSettings> | null | undefined,

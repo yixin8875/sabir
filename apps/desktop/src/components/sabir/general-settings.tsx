@@ -478,7 +478,7 @@ export function GeneralSettingsPanel({
           <Label>{tr("导出目录")}</Label>
           <div className="flex flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1 break-all rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-foreground">
-              {appSettings.exportDir ?? tr("默认：文档目录下的 Livetrans")}
+              {appSettings.exportDir ?? tr("默认：文档目录下的 Sabir")}
             </div>
             <Button variant="outline" size="sm" onClick={() => void chooseExportDir()}>
               {tr("浏览…")}

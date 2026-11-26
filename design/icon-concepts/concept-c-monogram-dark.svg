@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-labelledby="title">
+  <title id="title">Sabir icon concept C — S monogram in a caption frame, dark</title>
+  <rect width="1024" height="1024" fill="#17181C"/>
+  <rect x="112" y="112" width="800" height="800" rx="176" fill="#FBFAF7"/>
+  <g fill="none" stroke="#17181C" stroke-width="88" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M704 344H320V512H704"/>
+    <path d="M704 512V680H320"/>
+  </g>
+  <path d="M320 512H704" fill="none" stroke="#2B6F80" stroke-width="88" stroke-linecap="round"/>
+</svg>

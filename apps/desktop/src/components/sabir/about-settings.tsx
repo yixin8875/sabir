@@ -110,7 +110,7 @@ export function AboutSettings() {
             {tr("软件更新")}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {tr("Livetrans {version} · 本机运行，更新检查只访问发布源。", {
+            {tr("Sabir {version} · 本机运行，更新检查只访问发布源。", {
               version,
             })}
           </p>

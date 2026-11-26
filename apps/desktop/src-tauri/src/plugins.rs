@@ -5,7 +5,7 @@
 //! with `{"type":"rewrite","id":n,"text":"…"}` on stdout, which replaces the
 //! displayed and stored translation. Every event is also appended to
 //! `<app_data>/streams/<session id>.jsonl` so Obsidian/Notion scripts and the
-//! `livetrans stream` CLI can follow a session without a plugin.
+//! `sabir stream` CLI can follow a session without a plugin.
 
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
@@ -36,7 +36,7 @@ const MAX_REWRITE_CHARS: usize = 4_000;
 #[serde(rename_all = "camelCase", default)]
 pub struct PluginSettings {
     pub enabled: bool,
-    /// Shell command, e.g. `python C:\plugins\livetrans.py`. Empty means none.
+    /// Shell command, e.g. `python C:\plugins\sabir.py`. Empty means none.
     pub command: String,
 }
 
@@ -220,7 +220,7 @@ impl PluginService {
         let pending = Arc::clone(&self.pending);
         let alive = Arc::clone(&self.alive);
         thread::Builder::new()
-            .name("livetrans-plugin-out".to_string())
+            .name("sabir-plugin-out".to_string())
             .spawn(move || {
                 for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                     if line.trim().is_empty() {
@@ -258,7 +258,7 @@ impl PluginService {
             .map_err(|err| format!("插件读取线程启动失败：{err}"))?;
 
         thread::Builder::new()
-            .name("livetrans-plugin-err".to_string())
+            .name("sabir-plugin-err".to_string())
             .spawn(move || {
                 for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                     if !line.trim().is_empty() {
@@ -517,7 +517,7 @@ pub fn probe(command: &str) -> Result<String, String> {
 
     let (tx, rx) = mpsc::channel::<String>();
     let reader = thread::Builder::new()
-        .name("livetrans-plugin-probe".to_string())
+        .name("sabir-plugin-probe".to_string())
         .spawn(move || {
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 if tx.send(line).is_err() {
@@ -600,7 +600,7 @@ mod tests {
     }
 
     fn fixture(label: &str) -> (PluginService, PathBuf) {
-        let dir = std::env::temp_dir().join(format!("livetrans-plugin-test-{label}"));
+        let dir = std::env::temp_dir().join(format!("sabir-plugin-test-{label}"));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let service = PluginService::open(dir.join("plugins.json"), dir.join("streams"));
@@ -694,7 +694,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn probe_accepts_an_echoing_plugin() {
-        let dir = std::env::temp_dir().join("livetrans-plugin-test-probe");
+        let dir = std::env::temp_dir().join("sabir-plugin-test-probe");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let bat = dir.join("reply.bat");

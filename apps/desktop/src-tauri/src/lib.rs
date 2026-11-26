@@ -70,7 +70,7 @@ fn current_session(engine: State<'_, Engine>) -> Option<i64> {
 }
 
 /// Export the current (or a given) session to the configured directory, or
-/// `Documents\Livetrans` when the user has not picked one.
+/// `Documents\Sabir` when the user has not picked one.
 #[tauri::command]
 fn export_session(
     app: AppHandle,
@@ -112,7 +112,7 @@ fn export_session(
         Some(dir) if !dir.trim().is_empty() => std::path::PathBuf::from(dir),
         _ => general::default_export_dir(&app)?,
     };
-    let dest = dir.join(format!("livetrans-{slug}.{format}"));
+    let dest = dir.join(format!("sabir-{slug}.{format}"));
     let path = store.export(id, &format, &dest)?;
     Ok(path.display().to_string())
 }
@@ -391,6 +391,31 @@ fn audio_settings_path(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|err| format!("找不到设置目录：{err}"))
 }
 
+/// Move the pre-rename app folders (`app.livetrans.desktop`) once, so local
+/// sessions, downloaded models and settings survive the rename. It only acts
+/// when the new folder does not exist yet; failures are logged, not fatal.
+fn migrate_legacy_app_dirs(app: &AppHandle) {
+    for dir in [app.path().app_data_dir(), app.path().app_config_dir()]
+        .into_iter()
+        .flatten()
+    {
+        if dir.exists() {
+            continue;
+        }
+        let Some(parent) = dir.parent() else {
+            continue;
+        };
+        let old = parent.join("app.livetrans.desktop");
+        if old == dir || !old.is_dir() {
+            continue;
+        }
+        match std::fs::rename(&old, &dir) {
+            Ok(()) => log::info!("migrated legacy app folder to {}", dir.display()),
+            Err(err) => log::warn!("could not migrate {}: {err}", old.display()),
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -464,6 +489,8 @@ pub fn run() {
                     .build(),
             )?;
 
+            migrate_legacy_app_dirs(app.handle());
+
             // Load the interface language before any service can emit text or
             // write session rows, so labels are consistent from the first run.
             let _ = general::load(&general::settings_path(app.handle()));
@@ -475,13 +502,13 @@ pub fn run() {
             let database = app
                 .path()
                 .app_data_dir()
-                .map(|dir| dir.join("livetrans.db"))
-                .unwrap_or_else(|_| PathBuf::from("livetrans.db"));
+                .map(|dir| dir.join("sabir.db"))
+                .unwrap_or_else(|_| PathBuf::from("sabir.db"));
             let store = match SessionStore::open(&database) {
                 Ok(store) => store,
                 Err(err) => {
                     log::error!("session store unavailable at {}: {err}", database.display());
-                    let fallback = std::env::temp_dir().join("livetrans.db");
+                    let fallback = std::env::temp_dir().join("sabir.db");
                     SessionStore::open(&fallback)?
                 }
             };

@@ -85,7 +85,7 @@ export function Onboarding({
   const ready = Boolean(asrView?.ready) || downloaded
 
   function finish() {
-    window.localStorage.setItem('livetrans-onboarded', '1')
+    window.localStorage.setItem('sabir-onboarded', '1')
     onComplete()
   }
 
@@ -191,10 +191,10 @@ export function Onboarding({
             <div className="space-y-5">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
-                  Livetrans
+                  Sabir
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-foreground">
-                  {tr("欢迎使用 Livetrans")}
+                  {tr("欢迎使用 Sabir")}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {tr("三步把它准备好。")}

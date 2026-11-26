@@ -123,7 +123,7 @@ export function PluginSettings({
                   command: event.target.value,
                 }))
               }
-              placeholder="python C:\\plugins\\livetrans.py"
+              placeholder="python C:\\plugins\\sabir.py"
               spellCheck={false}
               className="font-mono text-xs"
             />
@@ -174,7 +174,7 @@ export function PluginSettings({
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {tr(
-              "包含 session、status、partial、final、translationDelta、translationDone、translationError、error 与 sessionEnd；电平事件不写入。命令行可用 livetrans stream --follow 跟随最新一场。",
+              "包含 session、status、partial、final、translationDelta、translationDone、translationError、error 与 sessionEnd；电平事件不写入。命令行可用 sabir stream --follow 跟随最新一场。",
             )}
           </p>
           <p className="mt-2 flex items-center gap-1.5 text-[11px] leading-4 text-muted-foreground">

@@ -808,7 +808,7 @@ mod tests {
     use super::*;
 
     fn fixture(label: &str) -> (SessionStore, i64) {
-        let dir = std::env::temp_dir().join(format!("livetrans-store-test-{label}"));
+        let dir = std::env::temp_dir().join(format!("sabir-store-test-{label}"));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let store = SessionStore::open(&dir.join("test.db")).unwrap();
@@ -833,7 +833,7 @@ mod tests {
         let segments = store.segments(id);
         assert_eq!(segments.len(), 2);
         assert_eq!(segments[0].translated.as_deref(), Some("你好。"));
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-roundtrip"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-roundtrip"));
     }
 
     #[test]
@@ -845,7 +845,7 @@ mod tests {
         assert!(store.rename_session(9999, "x").is_err());
         let listed = store.list_sessions("产品评审", 5);
         assert!(listed.iter().any(|row| row.id == id));
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-rename"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-rename"));
     }
 
     #[test]
@@ -861,7 +861,7 @@ mod tests {
         assert!(store.list_sessions("", 10).is_empty());
         assert!(store.meta(id).is_none());
         assert!(store.delete_session(id).is_err());
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-library"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-library"));
     }
 
     #[test]
@@ -896,7 +896,7 @@ mod tests {
         assert_eq!(recent[0].session_id, second);
         assert!(store.segments_matching("%zzz%", 20).is_empty());
 
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-retrieval"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-retrieval"));
     }
 
     #[test]
@@ -940,12 +940,12 @@ mod tests {
         store.delete_session(id).unwrap();
         assert!(store.search_fulltext("rollout", 10, None).is_empty());
 
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-fts"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-fts"));
     }
 
     #[test]
     fn rebuilds_the_full_text_index_for_existing_databases() {
-        let dir = std::env::temp_dir().join("livetrans-store-test-fts-reopen");
+        let dir = std::env::temp_dir().join("sabir-store-test-fts-reopen");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.db");
@@ -972,7 +972,7 @@ mod tests {
     #[test]
     fn exports_markdown_jsonl_and_srt() {
         let (store, id) = fixture("export");
-        let dir = std::env::temp_dir().join("livetrans-store-export");
+        let dir = std::env::temp_dir().join("sabir-store-export");
         let md = store.export(id, "md", &dir.join("note.md")).unwrap();
         let text = fs::read_to_string(&md).unwrap();
         assert!(text.contains("Hello there."));
@@ -990,6 +990,6 @@ mod tests {
         assert!(text.contains("Second line."));
         assert!(store.export(id, "docx", &dir.join("x")).is_err());
         let _ = fs::remove_dir_all(&dir);
-        let _ = fs::remove_dir_all(std::env::temp_dir().join("livetrans-store-test-export"));
+        let _ = fs::remove_dir_all(std::env::temp_dir().join("sabir-store-test-export"));
     }
 }
