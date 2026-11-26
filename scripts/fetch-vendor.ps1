@@ -20,14 +20,18 @@ function Get-File([string]$url, [string]$out) {
 }
 
 try {
-    # sherpa-onnx shared C API (see README step 2).
+    # sherpa-onnx shared C API (see README step 2). Keep the archive in
+    # vendor/sherpa: sherpa-onnx-sys reads it from SHERPA_ONNX_ARCHIVE_DIR
+    # during build, and a temp file would be gone by then.
     $sherpaDir = Join-Path $vendor 'sherpa'
     New-Item -ItemType Directory -Force -Path $sherpaDir | Out-Null
-    $sherpaArchive = Join-Path $tmp 'sherpa.tar.bz2'
-    Get-File 'https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.3/sherpa-onnx-v2.0.3-win-x64-shared-MT-Release-lib.tar.bz2' $sherpaArchive
+    $sherpaVersion = '2.0.3'
+    $sherpaRoot = "sherpa-onnx-v$sherpaVersion-win-x64-shared-MT-Release-lib"
+    $sherpaArchive = Join-Path $sherpaDir "$sherpaRoot.tar.bz2"
+    Get-File "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/$sherpaRoot.tar.bz2" $sherpaArchive
     tar -xjf $sherpaArchive -C $sherpaDir --strip-components=2 `
-        'sherpa-onnx-v2.0.3-win-x64-shared-MT-Release-lib/lib/sherpa-onnx-c-api.dll' `
-        'sherpa-onnx-v2.0.3-win-x64-shared-MT-Release-lib/lib/sherpa-onnx-cxx-api.dll'
+        "$sherpaRoot/lib/sherpa-onnx-c-api.dll" `
+        "$sherpaRoot/lib/sherpa-onnx-cxx-api.dll"
     if ($LASTEXITCODE -ne 0) { throw 'tar failed to extract sherpa-onnx DLLs' }
 
     # ONNX Runtime DLL for ort's load-dynamic mode (see README step 5).
