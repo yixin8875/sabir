@@ -266,6 +266,7 @@ export function RecognitionSettings({
 
   const models = view?.models ?? []
   const installed = models.filter((model) => model.installed)
+  const streamingInstalled = installed.some((model) => model.kind === 'streaming')
   const selectedValue = isPath(form.model) ? 'custom' : (form.model ?? '')
 
   return (
@@ -343,6 +344,13 @@ export function RecognitionSettings({
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {formatBytes(model.bytes)} · {model.note}
                     </p>
+                    {model.kind === 'whisper' && (
+                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                        {streamingInstalled
+                          ? tr("已安装流式模型：说话时会先用它显示灰色预览，Whisper 定稿后替换。")
+                          : tr("再装一个流式模型（中英双语或英文 Zipformer），说话中就能看到灰色预览。")}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">

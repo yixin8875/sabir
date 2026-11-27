@@ -123,7 +123,13 @@ export function useEngine(options: UseEngineOptions = {}) {
         break
       }
       case 'partial': {
-        setInterim({ id: event.id, text: event.text, startMs: event.startMs })
+        // An empty partial clears the preview line (Whisper's draft is
+        // replaced by the finalized sentence it just decoded).
+        setInterim(
+          event.text
+            ? { id: event.id, text: event.text, startMs: event.startMs }
+            : null,
+        )
         break
       }
       case 'final': {
@@ -208,6 +214,12 @@ export function useEngine(options: UseEngineOptions = {}) {
     setState('starting')
     try {
       controllerRef.current = await startEngine(handleEvent)
+      // A new session starts from an empty live transcript; otherwise its
+      // utterance ids collide with the previous session's lines and fresh
+      // translations land under old sentences.
+      setFinals([])
+      setInterim(null)
+      setTranslations({})
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
       setState('error')

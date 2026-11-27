@@ -152,7 +152,16 @@ export async function listAsrModels(): Promise<AsrSettingsView> {
 
 export async function saveAsrSettings(settings: AsrSettings) {
   if (!isTauri()) {
-    demoView = { ...demoView, settings }
+    // Mirror Rust: the recommended model follows the recognition language.
+    const recommended = settings.language === 'en' ? 'en-streaming' : 'bilingual-zh-en'
+    demoView = {
+      ...demoView,
+      settings,
+      models: demoView.models.map((model) => ({
+        ...model,
+        recommended: model.id === recommended,
+      })),
+    }
     if (settings.model === null) {
       demoView.selectedDir = null
       demoView.ready = false

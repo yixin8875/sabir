@@ -61,7 +61,6 @@ pub struct ModelDef {
     pub note_en: &'static str,
     pub repo: &'static str,
     pub bytes: u64,
-    pub recommended: bool,
     pub kind: ModelKind,
     pub files: &'static [ModelFile],
 }
@@ -180,7 +179,6 @@ pub const CATALOG: &[ModelDef] = &[
         note_en: "Text appears as you speak; detects Chinese and English automatically. The default for general use.",
         repo: "csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
         bytes: 199_056_205,
-        recommended: true,
         kind: ModelKind::Streaming,
         files: BILINGUAL_FILES,
     },
@@ -192,7 +190,6 @@ pub const CATALOG: &[ModelDef] = &[
         note_en: "English only; smaller and faster, good for English-only courses.",
         repo: "csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26",
         bytes: 72_654_256,
-        recommended: false,
         kind: ModelKind::Streaming,
         files: EN_FILES,
     },
@@ -204,7 +201,6 @@ pub const CATALOG: &[ModelDef] = &[
         note_en: "For low-end machines or Chinese-only meetings; uses the least memory.",
         repo: "csukuangfj/sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23",
         bytes: 30_975_688,
-        recommended: false,
         kind: ModelKind::Streaming,
         files: ZH14M_FILES,
     },
@@ -216,7 +212,6 @@ pub const CATALOG: &[ModelDef] = &[
         note_en: "Segment recognition: text appears after a full sentence and a short pause; best accuracy for mixed Chinese–English and many languages. About 1 GB; CPU decoding adds about a second per sentence.",
         repo: "csukuangfj/sherpa-onnx-whisper-turbo",
         bytes: 1_036_613_791,
-        recommended: false,
         kind: ModelKind::Whisper,
         files: WHISPER_TURBO_FILES,
     },
@@ -228,11 +223,30 @@ pub const CATALOG: &[ModelDef] = &[
         note_en: "Segment recognition; a small multilingual model with a light download and memory footprint, less accurate than Turbo.",
         repo: "csukuangfj/sherpa-onnx-whisper-small",
         bytes: 375_485_327,
-        recommended: false,
         kind: ModelKind::Whisper,
         files: WHISPER_SMALL_FILES,
     },
 ];
+
+/// The model worth suggesting for the current recognition language. Pure
+/// English courses do better with the smaller English-only Zipformer; mixed and
+/// Chinese content stays on the bilingual model.
+fn recommended_id(language: &str) -> &'static str {
+    match language {
+        "en" => "en-streaming",
+        _ => "bilingual-zh-en",
+    }
+}
+
+/// Streaming models to try for the live preview while Whisper decodes, best
+/// first for the current language. Whisper itself has no word-by-word output,
+/// so an installed streaming model renders the grey draft line.
+fn preview_candidates(language: &str) -> &'static [&'static str] {
+    match language {
+        "en" => &["en-streaming", "bilingual-zh-en"],
+        _ => &["bilingual-zh-en"],
+    }
+}
 
 /* ------------------------------------------------------------------------- */
 /* Settings                                                                  */
@@ -498,6 +512,22 @@ impl AsrService {
         Ok((files, threads))
     }
 
+    /// A streaming model that can show the live grey preview while the selected
+    /// Whisper model decodes each span. `None` when no suitable streaming model
+    /// is installed; Whisper then keeps its current "text after the pause"
+    /// behaviour.
+    pub fn preview_model(&self) -> Option<(String, StreamingFiles)> {
+        let settings = self.settings.read().ok()?.clone();
+        let root = self.root(&settings);
+        for id in preview_candidates(&settings.language) {
+            let dir = root.join(id);
+            if let Some(ModelFiles::Streaming(files)) = discover(&dir) {
+                return Some(((*id).to_string(), files));
+            }
+        }
+        None
+    }
+
     /// Human-readable model name for the session history ("whisper-small",
     /// "bilingual-zh-en", or the custom directory's last path segment).
     pub fn model_label(&self) -> String {
@@ -523,6 +553,7 @@ impl AsrService {
             .unwrap_or_default();
         let selected_dir = self.resolve_dir().map(|path| path.display().to_string());
         let root = self.root(&settings);
+        let recommended = recommended_id(&settings.language);
         let models = CATALOG
             .iter()
             .map(|def| {
@@ -532,7 +563,7 @@ impl AsrService {
                     title: general::pick(def.title, def.title_en).to_string(),
                     note: general::pick(def.note, def.note_en).to_string(),
                     bytes: def.bytes,
-                    recommended: def.recommended,
+                    recommended: def.id == recommended,
                     kind: def.kind.as_str(),
                     installed: discover(&dir).is_some(),
                     downloading: self.is_downloading(def.id),
@@ -931,6 +962,90 @@ mod tests {
         assert_eq!(loaded.model.as_deref(), Some("zh-14m"));
         assert_eq!(loaded.threads, 4);
         let _ = fs::remove_file(&path);
+    }
+
+    fn temporary_service(root: &Path, language: &str) -> AsrService {
+        AsrService {
+            settings: RwLock::new(AsrSettings {
+                model: None,
+                language: language.to_string(),
+                threads: 2,
+                models_root: Some(root.display().to_string()),
+            }),
+            settings_path: root.join("asr.json"),
+            default_root: root.to_path_buf(),
+            vad: None,
+            downloads: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn install_streaming(root: &Path, id: &str) {
+        let dir = root.join(id);
+        fs::create_dir_all(&dir).unwrap();
+        for name in [
+            "encoder-x.int8.onnx",
+            "decoder-x.onnx",
+            "joiner-x.int8.onnx",
+            "tokens.txt",
+        ] {
+            fs::write(dir.join(name), b"x").unwrap();
+        }
+    }
+
+    #[test]
+    fn recommends_by_recognition_language() {
+        assert_eq!(recommended_id("en"), "en-streaming");
+        assert_eq!(recommended_id("auto"), "bilingual-zh-en");
+        assert_eq!(recommended_id("zh"), "bilingual-zh-en");
+
+        let root = std::env::temp_dir().join("sabir-recommend-test");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let view = temporary_service(&root, "en").view();
+        let recommended: Vec<_> = view
+            .models
+            .iter()
+            .filter(|model| model.recommended)
+            .collect();
+        assert_eq!(recommended.len(), 1);
+        assert_eq!(recommended[0].id, "en-streaming");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn preview_model_follows_language_and_installed_models() {
+        let root = std::env::temp_dir().join("sabir-preview-test");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        // Nothing installed: no preview.
+        assert!(temporary_service(&root, "auto").preview_model().is_none());
+
+        // English prefers the English-only model.
+        install_streaming(&root, "bilingual-zh-en");
+        install_streaming(&root, "en-streaming");
+        let (id, _) = temporary_service(&root, "en")
+            .preview_model()
+            .expect("english preview");
+        assert_eq!(id, "en-streaming");
+        let (id, _) = temporary_service(&root, "auto")
+            .preview_model()
+            .expect("bilingual preview");
+        assert_eq!(id, "bilingual-zh-en");
+
+        // English falls back to the bilingual model when that is all there is.
+        let _ = fs::remove_dir_all(root.join("en-streaming"));
+        let (id, _) = temporary_service(&root, "en")
+            .preview_model()
+            .expect("fallback preview");
+        assert_eq!(id, "bilingual-zh-en");
+
+        // A Chinese-only setup never borrows the English model for previews.
+        let _ = fs::remove_dir_all(root.join("bilingual-zh-en"));
+        install_streaming(&root, "en-streaming");
+        assert!(temporary_service(&root, "zh").preview_model().is_none());
+
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

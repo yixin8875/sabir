@@ -55,7 +55,24 @@ const SOURCES: {
   },
 ]
 
-const RECOMMENDED_ID = 'bilingual-zh-en'
+const LISTEN_LANGUAGES = [
+  {
+    value: 'en',
+    title: tr("英文为主"),
+    note: tr("课程、直播、会议以英文为主"),
+  },
+  {
+    value: 'auto',
+    title: tr("中英混合"),
+    note: tr("两种语言都会出现，自动识别"),
+  },
+  {
+    value: 'zh',
+    title: tr("中文为主"),
+    note: tr("中文课程或会议"),
+  },
+]
+
 const TOTAL_STEPS = 3
 
 type Progress = {
@@ -74,14 +91,15 @@ export function Onboarding({
   const [step, setStep] = useState(0)
   const [source, setSource] = useState<AudioSource>(audio.source)
   const [savingSource, setSavingSource] = useState(false)
+  const [savingLanguage, setSavingLanguage] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [downloaded, setDownloaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const recommended =
-    asrView?.models.find((model) => model.id === RECOMMENDED_ID) ??
-    asrView?.models.find((model) => model.recommended) ??
-    null
+  // The backend recommends a model for the chosen recognition language, so the
+  // card below follows the language instead of a fixed catalogue id.
+  const language = asrView?.settings.language ?? 'auto'
+  const recommended = asrView?.models.find((model) => model.recommended) ?? null
   const ready = Boolean(asrView?.ready) || downloaded
 
   function finish() {
@@ -111,6 +129,20 @@ export function Onboarding({
       return
     }
     finish()
+  }
+
+  async function chooseLanguage(value: string) {
+    if (value === language || savingLanguage) return
+    setError(null)
+    setSavingLanguage(true)
+    try {
+      const latest = await getAsrSettings()
+      onAsrSaved(await saveAsrSettings({ ...latest.settings, language: value }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setSavingLanguage(false)
+    }
   }
 
   async function downloadRecommended() {
@@ -297,19 +329,52 @@ export function Onboarding({
                   {tr("选择识别模型")}
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {tr("推荐先下载中英双语模型，边说边出字。")}
+                  {tr("按你主要听的语言挑一个模型，边说边出字。")}
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">
+                  {tr("我主要听哪种语言？")}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {LISTEN_LANGUAGES.map((item) => {
+                    const active = language === item.value
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={savingLanguage}
+                        onClick={() => void chooseLanguage(item.value)}
+                        className={cn(
+                          'rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-60',
+                          active
+                            ? 'border-foreground/40 bg-accent/60'
+                            : 'border-border hover:bg-accent/30',
+                        )}
+                      >
+                        <span className="block text-[13px] font-medium text-foreground">
+                          {item.title}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                          {item.note}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="rounded-xl border border-border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground">
-                      {recommended?.title ?? tr("中英双语 Zipformer")}
+                      {recommended?.title ?? tr("识别模型")}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {recommended?.note ??
-                        tr("边说边出字，中英文自动混识，通用场景首选。")}
+                        tr("按你主要听的语言推荐一个识别模型。")}
                     </p>
                   </div>
                   {recommended && (

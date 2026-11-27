@@ -362,7 +362,9 @@ export function GeneralSettingsPanel({
               </SelectPopup>
             </Select>
             <p className="text-[11px] leading-4 text-muted-foreground">
-              {tr("Whisper 模型按此语言解码；其他模型以模型自身为准。")}
+              {tr(
+                "决定识别设置里推荐哪个模型；Whisper 按此语言解码，其他模型以模型自身为准。",
+              )}
             </p>
           </div>
 

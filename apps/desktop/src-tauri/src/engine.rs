@@ -141,6 +141,12 @@ impl Engine {
 
     pub fn start(&self, app: &AppHandle, channel: Channel<EngineEvent>) -> Result<(), String> {
         let (files, threads) = app.state::<AsrService>().engine_model()?;
+        // Whisper has no partials; a streaming model, when installed, runs
+        // alongside it only to paint the grey preview line.
+        let preview = match &files {
+            ModelFiles::Whisper(_) => app.state::<AsrService>().preview_model(),
+            ModelFiles::Streaming(_) => None,
+        };
         let mut guard = self.session.lock().map_err(|_| "engine lock poisoned")?;
 
         if let Some(session) = guard.as_ref() {
@@ -250,7 +256,7 @@ impl Engine {
             let sink = sink.clone();
             let translate = Arc::clone(&self.translate);
             let hotwords = hotwords.clone();
-            move || asr_loop(rx, stop, sink, files, threads, translate, hotwords)
+            move || asr_loop(rx, stop, sink, files, threads, translate, hotwords, preview)
         });
 
         let capture = spawn_capture(
@@ -481,6 +487,7 @@ fn asr_loop(
     threads: i32,
     translate: Arc<TranslateService>,
     hotwords: Option<PathBuf>,
+    preview: Option<(String, StreamingFiles)>,
 ) {
     match files {
         ModelFiles::Streaming(files) => {
@@ -488,7 +495,9 @@ fn asr_loop(
         }
         // Whisper decoding has no hotword support; the glossary still reaches
         // translation and Q&A.
-        ModelFiles::Whisper(files) => whisper_loop(rx, stop, sink, files, threads, translate),
+        ModelFiles::Whisper(files) => {
+            whisper_loop(rx, stop, sink, files, threads, translate, preview)
+        }
     }
 }
 
@@ -644,6 +653,7 @@ fn whisper_loop(
     files: WhisperFiles,
     threads: i32,
     translate: Arc<TranslateService>,
+    preview: Option<(String, StreamingFiles)>,
 ) {
     let config = whisper_config(&files, threads);
     let Some(recognizer) = OfflineRecognizer::create(&config) else {
@@ -701,13 +711,24 @@ fn whisper_loop(
         files.language.as_deref().unwrap_or("auto")
     );
 
+    // `preview` doubles as the flag that a grey draft line exists and must be
+    // cleared once Whisper replaces it with a final sentence.
+    let clear_preview = preview.is_some();
+
     sink.send(EngineEvent::Status {
         state: "listening",
         message: Some(
-            general::pick(
-                "Whisper 整段识别：说完一句、停顿后出字",
-                "Whisper segment recognition: text appears after a sentence and a pause",
-            )
+            if clear_preview {
+                general::pick(
+                    "Whisper 定稿：说话中先出灰色预览，停顿后定稿",
+                    "Whisper finals: a grey draft appears while you speak, finalized after a pause",
+                )
+            } else {
+                general::pick(
+                    "Whisper 整段识别：说完一句、停顿后出字",
+                    "Whisper segment recognition: text appears after a sentence and a pause",
+                )
+            }
             .to_string(),
         ),
         source: None,
@@ -719,11 +740,22 @@ fn whisper_loop(
     // silently drop audio, so the recognizer hands spans to a decoder thread
     // and this thread only ever feeds the VAD.
     let queue: WhisperJobs = Arc::new((Mutex::new(WhisperQueue::default()), Condvar::new()));
+    let preview_feed = preview.and_then(|(label, files)| {
+        let (feed, feed_rx) = sync_channel::<Vec<f32>>(16);
+        let preview_threads = threads.clamp(1, 2);
+        let stop = Arc::clone(&stop);
+        let sink = sink.clone();
+        let handle = spawn_thread("sabir-whisper-preview", move || {
+            whisper_preview_loop(feed_rx, stop, sink, files, preview_threads)
+        })?;
+        log::info!("whisper: preview engine ready ({label})");
+        Some((feed, handle))
+    });
     let Some(decoder) = spawn_thread("sabir-whisper-decode", {
         let sink = sink.clone();
         let translate = Arc::clone(&translate);
         let queue = Arc::clone(&queue);
-        move || whisper_decode_loop(recognizer, sink, translate, queue)
+        move || whisper_decode_loop(recognizer, sink, translate, queue, clear_preview)
     }) else {
         sink.send(EngineEvent::Error {
             message: general::pick(
@@ -754,8 +786,18 @@ fn whisper_loop(
         }
 
         vad.accept_waveform(&chunk);
+        if let Some((feed, _)) = preview_feed.as_ref() {
+            // Preview is best effort: a full channel means the draft line is
+            // behind, which is fine — Whisper's final is authoritative anyway.
+            let _ = feed.try_send(chunk.clone());
+        }
         session_samples += chunk.len() as u64;
         queue_whisper_segments(&vad, session_samples, &queue);
+    }
+
+    if let Some((feed, handle)) = preview_feed {
+        drop(feed);
+        let _ = handle.join();
     }
 
     // Whatever the speaker was in the middle of still deserves a final line.
@@ -835,6 +877,7 @@ fn whisper_decode_loop(
     sink: EngineSink,
     translate: Arc<TranslateService>,
     queue: WhisperJobs,
+    clear_preview: bool,
 ) {
     let mut utterance_id: u64 = 1;
 
@@ -865,6 +908,14 @@ fn whisper_decode_loop(
             .unwrap_or_default();
         if !text.is_empty() {
             log::info!("whisper {}–{}ms: {}", job.start_ms, job.end_ms, text);
+            if clear_preview {
+                // The grey draft line is replaced by the authoritative sentence.
+                sink.send(EngineEvent::Partial {
+                    id: PREVIEW_ID,
+                    text: String::new(),
+                    start_ms: job.start_ms,
+                });
+            }
             sink.send(EngineEvent::Final {
                 id: utterance_id,
                 text: text.clone(),
@@ -877,6 +928,92 @@ fn whisper_decode_loop(
     }
 
     log::info!("whisper: decoder drained");
+}
+
+/// Preview events share one id so the transcript keeps a single grey draft
+/// line; real utterances start at 1. An empty text clears the line.
+const PREVIEW_ID: u64 = 0;
+
+/// A streaming Zipformer that only paints the grey draft line while Whisper
+/// decodes. Finals, translation and persistence stay with Whisper, so a wrong
+/// preview can never reach the session or its note.
+fn whisper_preview_loop(
+    rx: Receiver<Vec<f32>>,
+    stop: Arc<AtomicBool>,
+    sink: EngineSink,
+    files: StreamingFiles,
+    threads: i32,
+) {
+    let config = build_config(&files, threads, None);
+    let Some(recognizer) = OnlineRecognizer::create(&config) else {
+        log::warn!("whisper: preview model failed to load; running without a draft line");
+        return;
+    };
+
+    let stream = recognizer.create_stream();
+    let mut session_ms: u64 = 0;
+    let mut utterance_start_ms: Option<u64> = None;
+    let mut last_text = String::new();
+    let mut last_sent_at = Instant::now() - Duration::from_secs(1);
+
+    loop {
+        if stop.load(Ordering::SeqCst) {
+            break;
+        }
+
+        let chunk = match rx.recv_timeout(Duration::from_millis(80)) {
+            Ok(chunk) => chunk,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        };
+        if chunk.is_empty() {
+            continue;
+        }
+
+        stream.accept_waveform(SAMPLE_RATE as i32, &chunk);
+        session_ms += (chunk.len() as u64 * 1000) / SAMPLE_RATE as u64;
+        while recognizer.is_ready(&stream) {
+            recognizer.decode(&stream);
+        }
+
+        let text = recognizer
+            .get_result(&stream)
+            .map(|result| normalize_caption(result.text.trim()))
+            .unwrap_or_default();
+
+        if !text.is_empty() && utterance_start_ms.is_none() {
+            utterance_start_ms = Some(session_ms.saturating_sub(600));
+        }
+
+        let changed = text != last_text;
+        // A final sentence clears the draft line; the heartbeat brings it back
+        // if the speaker has already moved on to the next words.
+        let heartbeat = !text.is_empty() && last_sent_at.elapsed() >= Duration::from_millis(700);
+        if !text.is_empty()
+            && (changed || heartbeat)
+            && last_sent_at.elapsed() >= Duration::from_millis(120)
+        {
+            sink.send(EngineEvent::Partial {
+                id: PREVIEW_ID,
+                text: text.clone(),
+                start_ms: utterance_start_ms.unwrap_or(session_ms),
+            });
+            last_text = text;
+            last_sent_at = Instant::now();
+        }
+
+        if recognizer.is_endpoint(&stream) {
+            recognizer.reset(&stream);
+            utterance_start_ms = None;
+            last_text.clear();
+        }
+    }
+
+    sink.send(EngineEvent::Partial {
+        id: PREVIEW_ID,
+        text: String::new(),
+        start_ms: session_ms,
+    });
 }
 
 /* ------------------------------------------------------------------------- */

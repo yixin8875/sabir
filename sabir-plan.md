@@ -1082,6 +1082,15 @@ pnpm dlx shadcn@latest add @coss/ui
 - **限制**：解码慢于连续语音时字幕仍会延迟，队列满了丢最旧段（日志有 warning），不会补齐；停止要等积压解完才结束会话/写笔记，最多约一分钟。
 - **顺带观察（与本改动无关）**：全新配置目录首次冷启动时，前端可能拿到空设置（界面显示「未选择模型」），重载窗口后恢复，疑似命令调用早于 setup 完成；后续可加一次加载重试。
 
+### 识别选型与 Whisper 预览（2026-11-27）
+
+- **问题**：识别设置把中英双语固定标为「推荐」，纯英文课程也拿到英文准确率一般的双语模型；英文专用模型自己写着「适合纯英文课程」却永远不推荐。Whisper 准确但整段解码，说话中没有「看到在听」的预览，实时性与准确率只能二选一。
+- **选型**（`asr_models.rs`、`onboarding.tsx`、`general-settings.tsx`）：`recommended` 不再写死在目录里，改由识别语言决定：`en → en-streaming`，`auto/zh → bilingual-zh-en`；首次引导第 3 步先问「主要听哪种语言」（英文 / 中英混合 / 中文），保存 `asr.json` 的 `language` 后推荐卡片随之切换。设置页的推荐徽章与语言说明同步，Whisper 卡片在未装流式模型时提示预览不可用。
+- **预览**（`engine.rs`、`use-engine.ts`、`recognition-settings.tsx`）：选 Whisper 且装了流式模型时，采集线程把同一批音频复制一份给 `sabir-whisper-preview` 线程，用流式模型只发 `Partial`（固定 id 0），不翻译、不落库；Whisper 每定稿一句先发一条空 `Partial` 清掉灰色草稿行，再发 `Final`。预览落后时丢块（通道 16），700ms 心跳重发防止被 Final 清掉后不再出现；停止时预览线程 join 并清空草稿。语言为 `en` 时优先英文 Zipformer，否则用中英双语；两者都没装则保持原行为。空 `Partial` 不再写进插件事件流。
+- **已验证**：`cargo check`、`cargo test --lib`（48 通过 / 6 忽略，含推荐与预览选型单测）、`tsc -b`、`oxlint`（无新增 error）。实机隔离 identifier `app.sabir.preview`（`asr.json` 选 whisper-small，中英双语模型用目录联接挂进测试模型根）：日志出现 `whisper: preview engine ready (bilingual-zh-en)`；连续英文 TTS 播放时截图显示一句灰色草稿（`decoding…`），Whisper 在停顿或 12 秒切段后定稿并接上译文；停止后 `decoder drained`。
+- **顺带修复**：新会话开始时前端没有清空上一场的字幕，而 Whisper 的 utterance id 又从 1 开始，新译文会挂到旧句下面；`use-engine.ts` 的 `start()` 现在开始新会话前清空字幕、预览与译文。
+- **限制**：预览要额外装一个流式模型，并多占一份模型内存（约 70–200MB）；预览文本可能和 Whisper 定稿不一致，定稿、翻译与笔记只认 Whisper；`auto/zh` 只把中英双语当作预览模型，纯英文设置才优先英文 Zipformer。
+
 ## 4.2 MVP 任务拆解
 
 1. **Tauri 骨架**：`tauri.conf.json`、capabilities、主窗 + 浮标、托盘、单实例、日志。

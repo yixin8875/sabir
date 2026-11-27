@@ -324,8 +324,15 @@ impl PluginService {
     /// Level events are omitted: they arrive many times a second and carry no
     /// transcript text.
     pub fn record(&self, session_id: i64, event: &EngineEvent) {
+        // Levels are too chatty for a transcript stream, and the empty partial
+        // that clears Whisper's grey preview is for the UI only.
         if matches!(event, EngineEvent::Level { .. }) {
             return;
+        }
+        if let EngineEvent::Partial { text, .. } = event {
+            if text.is_empty() {
+                return;
+            }
         }
         let Ok(mut value) = serde_json::to_value(event) else {
             return;
