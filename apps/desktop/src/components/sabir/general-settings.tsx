@@ -18,7 +18,6 @@ import { Switch } from '@/components/ui/switch'
 import {
   DEFAULT_APP_SETTINGS,
   getAppSettings,
-  pickExportDir,
   saveAppSettings,
   type AppSettings,
 } from '@/lib/app-settings'
@@ -153,12 +152,6 @@ export function GeneralSettingsPanel({
     }
   }, [])
 
-  async function chooseExportDir() {
-    const dir = await pickExportDir()
-    if (!dir) return
-    setAppSettings((current) => ({ ...current, exportDir: dir }))
-  }
-
   const dirty =
     JSON.stringify(generalForm) !== generalKey ||
     source !== audio.source ||
@@ -175,7 +168,14 @@ export function GeneralSettingsPanel({
     try {
       let nextApp = savedApp
       if (appKey !== savedAppKey) {
-        nextApp = await saveAppSettings(appSettings)
+        // Merge into the latest settings: the Records page also writes this
+        // file, so a stale copy would clobber its folder choice.
+        const latest = await getAppSettings()
+        nextApp = await saveAppSettings({
+          ...latest,
+          locale: appSettings.locale,
+          minimizeToTray: appSettings.minimizeToTray,
+        })
         setAppSettings(nextApp)
         setSavedApp(nextApp)
       }
@@ -443,6 +443,27 @@ export function GeneralSettingsPanel({
 
           <div className="flex items-center justify-between gap-4 px-4 py-3.5">
             <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{tr("显示字幕浮窗")}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {tr(
+                  "记录时在屏幕底部显示双语字幕浮窗，可拖动与缩放；只在记录中显示。",
+                )}
+              </p>
+            </div>
+            <Switch
+              checked={generalForm.captionEnabled}
+              onCheckedChange={(checked: boolean) =>
+                setGeneralForm((current) => ({
+                  ...current,
+                  captionEnabled: checked,
+                }))
+              }
+              aria-label={tr("显示字幕浮窗")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+            <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
                 {tr("关闭窗口时留在托盘")}
               </p>
@@ -462,38 +483,6 @@ export function GeneralSettingsPanel({
               }
               aria-label={tr("关闭窗口时留在托盘")}
             />
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">{tr("导出")}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {tr("Markdown、JSONL 与 SRT 文件保存到这里；目录不存在时会自动创建。")}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>{tr("导出目录")}</Label>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-0 flex-1 break-all rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-foreground">
-              {appSettings.exportDir ?? tr("默认：文档目录下的 Sabir")}
-            </div>
-            <Button variant="outline" size="sm" onClick={() => void chooseExportDir()}>
-              {tr("浏览…")}
-            </Button>
-            {appSettings.exportDir && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setAppSettings((current) => ({ ...current, exportDir: null }))
-                }
-              >
-                {tr("恢复默认")}
-              </Button>
-            )}
           </div>
         </div>
       </section>

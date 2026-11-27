@@ -7,6 +7,8 @@
 export type GeneralSettings = {
   alwaysOnTop: boolean
   floatEnabled: boolean
+  /** The always-on-top bilingual subtitle overlay shown while recording. */
+  captionEnabled: boolean
   uiScale: number
 }
 
@@ -15,6 +17,7 @@ export const UI_SCALES = [90, 100, 110, 120] as const
 export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   alwaysOnTop: false,
   floatEnabled: true,
+  captionEnabled: false,
   uiScale: 100,
 }
 
@@ -25,6 +28,7 @@ function normalize(settings: GeneralSettings): GeneralSettings {
   return {
     alwaysOnTop: Boolean(settings.alwaysOnTop),
     floatEnabled: Boolean(settings.floatEnabled),
+    captionEnabled: Boolean(settings.captionEnabled),
     uiScale: Number.isFinite(scale)
       ? Math.min(150, Math.max(80, Math.round(scale)))
       : DEFAULT_GENERAL_SETTINGS.uiScale,

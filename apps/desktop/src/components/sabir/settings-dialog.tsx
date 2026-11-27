@@ -1,16 +1,19 @@
 import { tr } from '@/lib/i18n'
 import { useEffect, useRef, useState } from 'react'
 import {
+  FolderOpen,
   Info,
   Languages,
   Mic,
   NotebookText,
+  Palette,
   Plug,
   Settings2,
   Volume2,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { Appearance, ThemeMode } from '@/lib/appearance'
 import type { AsrSettingsView } from '@/lib/asr'
 import type { AudioSettings } from '@/lib/audio'
 import type { GeneralSettings } from '@/lib/general'
@@ -29,6 +32,8 @@ import {
 } from './recognition-settings'
 import { PluginSettings } from './plugin-settings'
 import { AboutSettings } from './about-settings'
+import { AppearanceSettings } from './appearance-settings'
+import { RecordsSettings } from './records-settings'
 import { TranslationSettings } from './translation-settings'
 import { VoiceSettings } from './voice-settings'
 import { cn } from '@/lib/utils'
@@ -39,6 +44,8 @@ export type SettingsSection =
   | 'translation'
   | 'glossary'
   | 'voice'
+  | 'appearance'
+  | 'records'
   | 'plugins'
   | 'about'
 
@@ -48,6 +55,8 @@ const SECTIONS: { id: SettingsSection; label: string; icon: typeof Mic }[] = [
   { id: 'translation', label: tr("翻译与聊天"), icon: Languages },
   { id: 'glossary', label: tr("场景与术语"), icon: NotebookText },
   { id: 'voice', label: tr("配音"), icon: Volume2 },
+  { id: 'appearance', label: tr("外观"), icon: Palette },
+  { id: 'records', label: tr("记录"), icon: FolderOpen },
   { id: 'plugins', label: tr("插件"), icon: Plug },
   { id: 'about', label: tr("关于与诊断"), icon: Info },
 ]
@@ -58,6 +67,8 @@ const TITLES: Record<SettingsSection, string> = {
   translation: tr("翻译与聊天"),
   glossary: tr("场景与术语"),
   voice: tr("配音"),
+  appearance: tr("外观"),
+  records: tr("记录"),
   plugins: tr("插件"),
   about: tr("关于与诊断"),
 }
@@ -77,6 +88,10 @@ type SettingsDialogProps = {
   onTranslateSaved: (view: TranslateSettingsView) => void
   onGlossarySaved?: (glossary: Glossary) => void
   onAudioSaved?: (settings: AudioSettings) => void
+  appearance: Appearance
+  resolvedMode: ThemeMode
+  onAppearanceChange: (patch: Partial<Appearance>) => void
+  onSelectTheme: (id: string) => void
   voiceView: VoiceSettingsView | null
   onVoiceReload: () => Promise<void>
   onVoiceSaved: (view: VoiceSettingsView) => void
@@ -100,6 +115,10 @@ export function SettingsDialog({
   onTranslateSaved,
   onGlossarySaved,
   onAudioSaved,
+  appearance,
+  resolvedMode,
+  onAppearanceChange,
+  onSelectTheme,
   voiceView,
   onVoiceReload,
   onVoiceSaved,
@@ -114,6 +133,7 @@ export function SettingsDialog({
     translation: false,
     glossary: false,
     voice: false,
+    records: false,
     plugins: false,
   })
   const [saving, setSaving] = useState(false)
@@ -122,6 +142,7 @@ export function SettingsDialog({
   const translationRef = useRef<SettingsPanelHandle>(null)
   const glossaryRef = useRef<SettingsPanelHandle>(null)
   const voiceRef = useRef<SettingsPanelHandle>(null)
+  const recordsRef = useRef<SettingsPanelHandle>(null)
   const pluginRef = useRef<SettingsPanelHandle>(null)
 
   useEffect(() => {
@@ -133,6 +154,7 @@ export function SettingsDialog({
       translation: false,
       glossary: false,
       voice: false,
+      records: false,
       plugins: false,
     })
   }, [open, initialSection])
@@ -157,6 +179,7 @@ export function SettingsDialog({
     dirty.translation ||
     dirty.glossary ||
     dirty.voice ||
+    dirty.records ||
     dirty.plugins
 
   async function handleSave() {
@@ -166,6 +189,7 @@ export function SettingsDialog({
       if (dirty.translation) await translationRef.current?.save()
       if (dirty.glossary) await glossaryRef.current?.save()
       if (dirty.voice) await voiceRef.current?.save()
+      if (dirty.records) await recordsRef.current?.save()
       if (dirty.plugins) await pluginRef.current?.save()
       // General goes last: it re-reads the latest audio/ASR/translation
       // settings, so it must see whatever the panels above just saved.
@@ -231,12 +255,13 @@ export function SettingsDialog({
             </Button>
           </header>
 
-          <div className="flex gap-1 border-b border-border px-3 py-1.5 sm:hidden">
+          <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-1.5 [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden">
             {SECTIONS.map((item) => (
               <Button
                 key={item.id}
                 size="sm"
                 variant={section === item.id ? 'secondary' : 'ghost'}
+                className="shrink-0"
                 onClick={() => setSection(item.id)}
               >
                 {item.label}
@@ -318,6 +343,26 @@ export function SettingsDialog({
                     current.voice === value
                       ? current
                       : { ...current, voice: value },
+                  )
+                }
+              />
+            </div>
+            <div className={section === 'appearance' ? 'block' : 'hidden'}>
+              <AppearanceSettings
+                appearance={appearance}
+                resolvedMode={resolvedMode}
+                onUpdate={onAppearanceChange}
+                onSelectTheme={onSelectTheme}
+              />
+            </div>
+            <div className={section === 'records' ? 'block' : 'hidden'}>
+              <RecordsSettings
+                ref={recordsRef}
+                onDirtyChange={(value) =>
+                  setDirty((current) =>
+                    current.records === value
+                      ? current
+                      : { ...current, records: value },
                   )
                 }
               />

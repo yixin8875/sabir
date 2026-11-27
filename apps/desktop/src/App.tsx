@@ -4,6 +4,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { AskPanel } from '@/components/sabir/ask-panel'
 import { ControlDock, TopBar } from '@/components/sabir/chrome'
+import type {
+  CaptionLine,
+  CaptionState,
+} from '@/components/sabir/caption-overlay'
 import type { GeneralSaveResult } from '@/components/sabir/general-settings'
 import { LibraryDialog } from '@/components/sabir/library-dialog'
 import { Onboarding } from '@/components/sabir/onboarding'
@@ -13,6 +17,7 @@ import {
 } from '@/components/sabir/settings-dialog'
 import { TranscriptView } from '@/components/sabir/transcript'
 import { useAsrSettings } from '@/hooks/use-asr-settings'
+import { useAppearance } from '@/hooks/use-appearance'
 import { useAudioSettings } from '@/hooks/use-audio-settings'
 import { useEngine } from '@/hooks/use-engine'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -26,17 +31,6 @@ import { audioSourceLabel } from '@/lib/audio'
 import { isTauri } from '@/lib/engine'
 import { describeRoute } from '@/lib/translation'
 
-type Theme = 'light' | 'dark'
-
-function initialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  const stored = window.localStorage.getItem('sabir-theme')
-  if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
-}
-
 export default function App() {
   const asr = useAsrSettings()
   const translate = useTranslateSettings()
@@ -45,12 +39,12 @@ export default function App() {
   const general = useGeneralSettings()
   const voice = useVoice()
   const plugins = usePluginSettings()
+  const appearance = useAppearance()
   const engine = useEngine({
     translateEnabled: translate.settings.enabled,
     onTranslationDone: (text) =>
       voice.speak(text, translate.settings.targetLang),
   })
-  const [theme, setTheme] = useState<Theme>(initialTheme)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection>('general')
@@ -65,11 +59,6 @@ export default function App() {
   const speechKind =
     asr.view?.models.find((model) => model.id === asr.view?.settings.model)
       ?.kind ?? null
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    window.localStorage.setItem('sabir-theme', theme)
-  }, [theme])
 
   // Rust is the source of truth for the interface language; mirror it into
   // localStorage once on boot and reload if this window was built with the
@@ -150,6 +139,35 @@ export default function App() {
     void invoke('set_float_visible', { visible: floatActive }).catch(() => {})
   }, [floatActive])
 
+  // The overlay is only visible while a session is running, so it never
+  // covers the screen when the app is idle. Toggling the preference on mid-
+  // session shows it at once; dismissing it from the overlay itself turns the
+  // preference off, which hides it here.
+  const captionActive =
+    general.settings.captionEnabled &&
+    (state === 'starting' || state === 'listening' || state === 'paused')
+
+  useEffect(() => {
+    if (!isTauri()) return
+    // Both windows share localStorage, so the main window can hand Rust the
+    // spot the overlay was last dragged to.
+    let spot: { x: number; y: number } | null = null
+    try {
+      const raw = window.localStorage.getItem('sabir-overlay-pos')
+      if (raw) {
+        const saved = JSON.parse(raw) as { x?: unknown; y?: unknown }
+        if (typeof saved.x === 'number' && typeof saved.y === 'number') {
+          spot = { x: Math.round(saved.x), y: Math.round(saved.y) }
+        }
+      }
+    } catch {
+      // Corrupt position: let Rust use the default spot.
+    }
+    void invoke('set_caption_visible', { visible: captionActive, spot }).catch(
+      () => {},
+    )
+  }, [captionActive])
+
   const floatSource = engine.source
     ? localize(engine.source)
     : audioSourceLabel(audio.settings.source)
@@ -162,6 +180,45 @@ export default function App() {
       source: floatSource,
     }).catch(() => {})
   }, [state, engine.elapsedMs, floatSource])
+
+  // The subtitle overlay lives in its own window; it only needs the last two
+  // lines so each partial update stays a few hundred bytes.
+  useEffect(() => {
+    if (!isTauri()) return
+    const lines: CaptionLine[] = engine.finals.slice(-2).map((segment) => {
+      const translation = engine.translations[segment.id]
+      return {
+        id: segment.id,
+        text: segment.text,
+        translation: translation?.text.trim() ? translation.text : null,
+      }
+    })
+    const payload: CaptionState = {
+      state,
+      source: floatSource,
+      interim: engine.interim?.text ?? null,
+      lines,
+    }
+    void emit('sabir:caption-state', payload).catch(() => {})
+  }, [
+    state,
+    floatSource,
+    engine.finals,
+    engine.interim,
+    engine.translations,
+  ])
+
+  // Dismissed from the overlay itself (or Alt+F4 on it): switch it back off.
+  useEffect(() => {
+    if (!isTauri()) return
+    const dismiss = () => general.update({ captionEnabled: false })
+    const unlistenDismiss = listen('sabir:caption-dismiss', dismiss)
+    const unlistenHidden = listen('sabir:caption-hidden', dismiss)
+    return () => {
+      void unlistenDismiss.then((fn) => fn())
+      void unlistenHidden.then((fn) => fn())
+    }
+  }, [general.update])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -238,10 +295,8 @@ export default function App() {
   return (
     <div className="lt-surface flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <TopBar
-        theme={theme}
-        onToggleTheme={() =>
-          setTheme((current) => (current === 'light' ? 'dark' : 'light'))
-        }
+        theme={appearance.resolved}
+        onToggleTheme={appearance.toggleMode}
         onOpenSettings={() => openSettings('general')}
         onOpenLibrary={() => setLibraryOpen(true)}
         onOpenAbout={() => openSettings('about')}
@@ -330,6 +385,10 @@ export default function App() {
         onTranslateSaved={translate.setView}
         onGlossarySaved={glossary.setGlossary}
         onAudioSaved={audio.setSettings}
+        appearance={appearance.appearance}
+        resolvedMode={appearance.resolved}
+        onAppearanceChange={appearance.update}
+        onSelectTheme={appearance.selectTheme}
         voiceView={voice.view}
         onVoiceReload={voice.reload}
         onVoiceSaved={voice.setView}

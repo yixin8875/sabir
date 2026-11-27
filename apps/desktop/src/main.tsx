@@ -2,15 +2,22 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { CaptionOverlay } from '@/components/sabir/caption-overlay'
 import { LiveIndicator } from '@/components/sabir/live-indicator'
 
-const floatView =
-  new URLSearchParams(window.location.search).get('view') === 'float'
+const view = new URLSearchParams(window.location.search).get('view')
 
-if (floatView) document.body.classList.add('lt-float')
+if (view === 'float') document.body.classList.add('lt-float')
+if (view === 'caption') document.body.classList.add('lt-caption')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {floatView ? <LiveIndicator /> : <App />}
+    {view === 'float' ? (
+      <LiveIndicator />
+    ) : view === 'caption' ? (
+      <CaptionOverlay />
+    ) : (
+      <App />
+    )}
   </StrictMode>,
 )

@@ -29,7 +29,9 @@ use serde::Serialize;
 use plugins::{PluginService, PluginSettings, PluginSettingsView};
 use store::{SearchHit, SessionMeta, SessionStore, StoredSegment, EXPORT_FORMATS};
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State};
+use tauri::utils::config::WindowEffectsConfig;
+use tauri::window::{Effect, EffectState, EffectsBuilder};
+use tauri::{AppHandle, Emitter, Manager, State};
 use translate::{
     cancel_translate_download, clear_provider_api_key, delete_translate_model,
     download_translate_model, get_translate_settings, retranslate_segment, save_translate_settings,
@@ -115,6 +117,94 @@ fn export_session(
     let dest = dir.join(format!("sabir-{slug}.{format}"));
     let path = store.export(id, &format, &dest)?;
     Ok(path.display().to_string())
+}
+
+/// The folder records land in when the user has not picked one.
+#[tauri::command]
+fn default_export_dir(app: AppHandle) -> Result<String, String> {
+    general::default_export_dir(&app).map(|dir| dir.display().to_string())
+}
+
+/// Open the records folder in the system file manager. `dir` is the folder the
+/// Records page shows; `None` means the default `Documents\Sabir`.
+#[tauri::command]
+fn open_export_dir(app: AppHandle, dir: Option<String>) -> Result<String, String> {
+    let dir = match dir
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => PathBuf::from(value),
+        None => general::default_export_dir(&app)?,
+    };
+    std::fs::create_dir_all(&dir).map_err(|err| {
+        if general::is_chinese() {
+            format!("无法创建记录目录：{err}")
+        } else {
+            format!("Could not create the records folder: {err}")
+        }
+    })?;
+    open_in_file_manager(&dir)?;
+    Ok(dir.display().to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn open_in_file_manager(path: &Path) -> Result<(), String> {
+    std::process::Command::new("explorer")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|err| {
+            if general::is_chinese() {
+                format!("无法打开目录：{err}")
+            } else {
+                format!("Could not open the folder: {err}")
+            }
+        })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn open_in_file_manager(path: &Path) -> Result<(), String> {
+    let program = if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    std::process::Command::new(program)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|err| {
+            if general::is_chinese() {
+                format!("无法打开目录：{err}")
+            } else {
+                format!("Could not open the folder: {err}")
+            }
+        })
+}
+
+/// Turn the frosted, translucent window on or off. The window is created with
+/// `transparent: true`; the acrylic effect is what the OS paints underneath.
+/// Systems with transparency disabled simply keep the opaque background.
+#[tauri::command]
+fn set_window_translucency(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| general::pick("找不到主窗口", "Main window not found").to_string())?;
+    let effects: Option<WindowEffectsConfig> = if enabled {
+        Some(
+            EffectsBuilder::new()
+                .effect(Effect::Acrylic)
+                .state(EffectState::Active)
+                .build(),
+        )
+    } else {
+        None
+    };
+    log::info!("window translucency: enabled={enabled}");
+    window.set_effects(effects).map_err(|err| {
+        log::warn!("window translucency failed: {err}");
+        err.to_string()
+    })
 }
 
 #[tauri::command]
@@ -328,6 +418,90 @@ fn set_float_visible(app: AppHandle, visible: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Show or hide the subtitle overlay. The overlay remembers its own position in
+/// the webview's localStorage, so it is only shown and hidden here.
+#[tauri::command]
+fn set_caption_visible(
+    app: AppHandle,
+    visible: bool,
+    spot: Option<CaptionSpot>,
+) -> Result<(), String> {
+    let caption = app.get_webview_window("caption").ok_or_else(|| {
+        general::pick("找不到字幕浮窗", "Caption overlay window not found").to_string()
+    })?;
+    if visible {
+        // Never take focus away from the video or lecture underneath; clicks on
+        // the overlay's own buttons still arrive.
+        let _ = caption.set_focusable(false);
+        let _ = caption.set_always_on_top(true);
+        // Position before showing, so the window does not flash at a stale spot.
+        place_caption(&app, spot)?;
+        caption.show().map_err(|err| {
+            if general::is_chinese() {
+                format!("显示字幕浮窗失败：{err}")
+            } else {
+                format!("Could not show the caption overlay: {err}")
+            }
+        })?;
+    } else {
+        caption.hide().map_err(|err| {
+            if general::is_chinese() {
+                format!("隐藏字幕浮窗失败：{err}")
+            } else {
+                format!("Could not hide the caption overlay: {err}")
+            }
+        })?;
+    }
+    Ok(())
+}
+
+/// Where the user left the overlay (physical pixels), stored by its webview.
+#[derive(Clone, Copy, serde::Deserialize)]
+struct CaptionSpot {
+    x: i32,
+    y: i32,
+}
+
+/// Put the overlay back where the user dragged it, or at the bottom centre of
+/// the screen on first use. Done here rather than in the webview so it works
+/// even before the overlay document has loaded.
+fn place_caption(app: &AppHandle, spot: Option<CaptionSpot>) -> Result<(), String> {
+    let caption = app
+        .get_webview_window("caption")
+        .ok_or_else(|| general::pick("找不到字幕浮窗", "Caption overlay window not found").to_string())?;
+    let size = caption.outer_size().map_err(|err| err.to_string())?;
+    // Prefer the monitor the saved spot is on: the user may have dragged the
+    // overlay to a second screen. Otherwise follow the main window.
+    let monitor = spot
+        .and_then(|spot| {
+            app.monitor_from_point(spot.x as f64, spot.y as f64)
+                .ok()
+                .flatten()
+        })
+        .or_else(|| {
+            app.get_webview_window("main")
+                .and_then(|main| main.current_monitor().ok().flatten())
+        })
+        .or_else(|| caption.current_monitor().ok().flatten());
+    let Some(monitor) = monitor else {
+        return Ok(());
+    };
+    let origin = monitor.position();
+    let area = monitor.size();
+    let room_x = (area.width as i32 - size.width as i32).max(0);
+    let room_y = (area.height as i32 - size.height as i32).max(0);
+    let (x, y) = match spot {
+        Some(spot) => (spot.x, spot.y),
+        None => (origin.x + room_x / 2, origin.y + room_y - 96),
+    };
+    caption
+        .set_position(tauri::PhysicalPosition::new(
+            x.clamp(origin.x, origin.x + room_x),
+            y.clamp(origin.y, origin.y + room_y),
+        ))
+        .map_err(|err| err.to_string())
+}
+
 #[tauri::command]
 fn focus_main_window(app: AppHandle) -> Result<(), String> {
     let main = app
@@ -435,6 +609,8 @@ pub fn run() {
             rename_session,
             get_general_settings,
             save_general_settings,
+            default_export_dir,
+            open_export_dir,
             get_audio_settings,
             save_audio_settings,
             list_audio_devices,
@@ -455,7 +631,9 @@ pub fn run() {
             ask_across_sessions,
             probe_environment,
             set_always_on_top,
+            set_window_translucency,
             set_float_visible,
+            set_caption_visible,
             focus_main_window,
             get_translate_settings,
             save_translate_settings,
@@ -545,6 +723,14 @@ pub fn run() {
                         return;
                     }
                     window.app_handle().exit(0);
+                }
+            } else if window.label() == "caption" {
+                // The overlay has no title bar; Alt+F4 hides it and tells the
+                // main window to switch the preference off.
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.app_handle().emit("sabir:caption-hidden", ());
                 }
             }
         })

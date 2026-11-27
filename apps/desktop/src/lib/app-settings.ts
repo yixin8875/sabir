@@ -61,13 +61,15 @@ export async function saveAppSettings(
   )
 }
 
-export async function pickExportDir(): Promise<string | null> {
+export async function pickExportDir(
+  title: string = tr('选择导出目录'),
+): Promise<string | null> {
   if (!isTauri()) return null
   const { open } = await import('@tauri-apps/plugin-dialog')
   const picked = await open({
     directory: true,
     multiple: false,
-    title: tr('选择导出目录'),
+    title,
   })
   return typeof picked === 'string' ? picked : null
 }

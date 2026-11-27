@@ -1053,6 +1053,16 @@ pnpm dlx shadcn@latest add @coss/ui
 - **已验证**：`cargo check --offline`、`cargo check --all-targets --features cli --offline` 通过；`cargo test --lib --offline` 46 通过 / 6 忽略（新增 `general` 托盘字段往返、`diagnostics` 脱敏保留布局）；`tsc -b` 通过；`node scripts/set-version.mjs --check` 三处一致；下载 URL 用 HEAD 实测（sherpa 与 Silero 200；ONNX Runtime 改走 NuGet）。
 - **限制**：更新只手动检查，无启动自检、后台轮询或静默安装；安装后必须重启。`yixin8875/sabir` 尚无 Release 时检查更新会 404。托盘图标不随录音状态变化；关闭到托盘会中断当前录音。诊断包不含用户内容，但日志可能带会话标题/路径等元数据；脱敏按字段名，未来新增的敏感字段名需同步 `is_secret_key`。CI 只构建 Windows；正式发布前需先跑通一次标签流程并做安装冒烟，`TAURI_SIGNING_PRIVATE_KEY` 未配置时 workflow 会失败。
 
+### 外观主题、记录页与字幕浮窗（2026-11-27）
+
+对应功能全景第 16 条与「边看别的窗口边看字幕」的核心使用场景：
+
+- **外观**（`lib/appearance.ts`、`hooks/use-appearance.ts`、`appearance-settings.tsx`）：6 套浅色 + 9 套深色调色板，每套只存背景/卡片/侧栏/前景/强调色与四个色点，其余 coss token（边框、弱化文字、图表色等）由 `themeVars()` 现算、写到 `<html>` 的行内变量；跟随系统 / 手动切换、顶栏日月按钮、`sabir-appearance` 存 localStorage 并兼容旧的 `sabir-theme`。「半透明窗口」同时切换 `html.lt-translucent` 与 Rust `set_window_translucency`（Windows Acrylic），主窗口改为 `transparent: true` + `noRedirectionBitmap`，系统关闭透明效果时自动退化为不透明。
+- **记录页**（`records-settings.tsx`、`lib.rs`、`app-settings.ts`）：把「导出目录」从通用页搬到独立「记录」页，读写 `app-settings.json` 的 `exportDir`；新增 Rust `default_export_dir` 与 `open_export_dir`（目录不存在时创建，再用 `explorer` / `open` / `xdg-open` 打开）。两个页面保存时都先读最新设置再合并字段，避免语言/托盘或导出目录互相覆盖。
+- **字幕浮窗**（`caption-overlay.tsx`、`main.tsx` 的 `?view=caption`、`tauri.conf.json` 的 `caption` 窗口、`lib.rs` 的 `set_caption_visible`）：主窗口把最近两句原文/译文与未定稿预览经 `sabir:caption-state` 推给浮窗，浮窗只渲染、调字号、拖动、关闭，不接触引擎。显示条件是「开关打开且在记录中（starting/listening/paused）」，停止后自动隐藏；浮窗的关闭按钮或 Alt+F4 发 `sabir:caption-dismiss` / `sabir:caption-hidden`，主窗口据此把开关关掉。`set_caption_visible` 先 `set_focusable(false)`（`WS_EX_NOACTIVATE`，不抢视频/课程的焦点）与 `set_always_on_top(true)`，再按保存点所在显示器夹取位置、最后 `show()`，避免闪位；首次落在主显示器底部居中，位置由浮窗 `onMoved` 写回 localStorage。`capabilities/default.json` 把 `caption` 加入窗口列表，浮窗才拿到 `core:event` 监听/发送与 `data-tauri-drag-region` 权限。
+- **已验证**：`tsc -b`、`cargo check`、`oxlint`（无新增 error）；浏览器预览的 `?view=caption` 布局正常。实机用系统 TTS 播放英文、`Ctrl+M` 开始记录：浮窗 `IsWindowVisible=true`、`WS_EX_TOPMOST` 且 z-order 在主窗口与录音浮标之上，`PrintWindow` 抓到主窗口推送的成句字幕；再次 `Ctrl+M` 停止后 `IsWindowVisible=false`。GDI 全屏截图抓不到透明浮窗的像素，因此用窗口属性与窗口自身捕获验证；记录页的「打开目录」与浮窗内按钮未逐一点击。
+- **限制**：浮窗只显示最近两句原文与译文加预览句，不显示问答；位置与字号存在 WebView localStorage，清空站点数据或重装后回默认；无边框与标题栏，Alt+F4 等同关开关；不抢焦点，所以不能在浮窗里输入或切换音源；Acrylic 依赖系统透明效果；macOS/Linux 未验证。
+
 ## 4.2 MVP 任务拆解
 
 1. **Tauri 骨架**：`tauri.conf.json`、capabilities、主窗 + 浮标、托盘、单实例、日志。

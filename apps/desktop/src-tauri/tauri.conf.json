@@ -27,7 +27,9 @@
         "minHeight": 560,
         "resizable": true,
         "fullscreen": false,
-        "center": true
+        "center": true,
+        "transparent": true,
+        "noRedirectionBitmap": true
       },
       {
         "label": "float",
@@ -41,6 +43,23 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "shadow": false,
+        "visible": false
+      },
+      {
+        "label": "caption",
+        "title": "Sabir 字幕浮窗",
+        "url": "index.html?view=caption",
+        "width": 880,
+        "height": 200,
+        "minWidth": 420,
+        "minHeight": 120,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "focus": false,
         "visible": false
       }
     ],

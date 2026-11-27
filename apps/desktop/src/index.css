@@ -292,6 +292,27 @@ body.lt-float {
   user-select: none;
 }
 
+/* The subtitle overlay window is transparent too; only its bar paints. */
+body.lt-caption,
+body.lt-caption #root {
+  background: transparent !important;
+}
+
+body.lt-caption {
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Translucent window: let the OS acrylic effect show through the app surface.
+   The window itself is transparent in tauri.conf.json; the root only tints it. */
+html.lt-translucent body {
+  background: transparent;
+}
+
+html.lt-translucent #root > .lt-surface {
+  background-color: color-mix(in srgb, var(--background) 78%, transparent) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

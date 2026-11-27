@@ -7,6 +7,9 @@ license = ""
 repository = ""
 edition = "2024"
 rust-version = "1.90"
+# Two binaries exist (the desktop app and the opt-in CLI); `cargo run` must pick
+# the app so `tauri dev` does not fail with "could not determine which binary".
+default-run = "app"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
