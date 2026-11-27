@@ -5,11 +5,11 @@
 //! by a streaming Zipformer, and only text + level numbers leave this module
 //! through a Tauri channel.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, Sender, SyncSender};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -676,7 +676,10 @@ fn whisper_loop(
     vad_config.silero_vad.min_silence_duration = 0.55;
     vad_config.silero_vad.min_speech_duration = 0.25;
     vad_config.silero_vad.window_size = 512;
-    vad_config.silero_vad.max_speech_duration = 20.0;
+    // Whisper decodes a span in one go, so a longer span means a bigger
+    // backlog behind the decoder. 12 s keeps every job short while still
+    // holding several sentences of continuous speech.
+    vad_config.silero_vad.max_speech_duration = 12.0;
     vad_config.sample_rate = SAMPLE_RATE as i32;
     vad_config.num_threads = 1;
 
@@ -711,7 +714,28 @@ fn whisper_loop(
         sample_rate: Some(SAMPLE_RATE),
     });
 
-    let mut utterance_id: u64 = 1;
+    // Decoding a whole span takes seconds. Doing it on this thread used to
+    // block WASAPI reads (the capture channel only holds about a second) and
+    // silently drop audio, so the recognizer hands spans to a decoder thread
+    // and this thread only ever feeds the VAD.
+    let queue: WhisperJobs = Arc::new((Mutex::new(WhisperQueue::default()), Condvar::new()));
+    let Some(decoder) = spawn_thread("sabir-whisper-decode", {
+        let sink = sink.clone();
+        let translate = Arc::clone(&translate);
+        let queue = Arc::clone(&queue);
+        move || whisper_decode_loop(recognizer, sink, translate, queue)
+    }) else {
+        sink.send(EngineEvent::Error {
+            message: general::pick(
+                "无法启动 Whisper 解码线程。",
+                "Could not start the Whisper decoder thread.",
+            )
+            .to_string(),
+        });
+        stop.store(true, Ordering::SeqCst);
+        return;
+    };
+
     let mut session_samples: u64 = 0;
 
     loop {
@@ -731,63 +755,128 @@ fn whisper_loop(
 
         vad.accept_waveform(&chunk);
         session_samples += chunk.len() as u64;
-        drain_whisper_segments(
-            &vad,
-            &recognizer,
-            &sink,
-            &translate,
-            &mut utterance_id,
-            session_samples,
-        );
+        queue_whisper_segments(&vad, session_samples, &queue);
     }
 
     // Whatever the speaker was in the middle of still deserves a final line.
     vad.flush();
-    drain_whisper_segments(
-        &vad,
-        &recognizer,
-        &sink,
-        &translate,
-        &mut utterance_id,
-        session_samples,
-    );
+    queue_whisper_segments(&vad, session_samples, &queue);
+    close_whisper_queue(&queue);
+    // Drain the backlog so the session and its note include every sentence.
+    let _ = decoder.join();
 }
 
-fn drain_whisper_segments(
+/// One VAD-cut span waiting for Whisper.
+struct WhisperJob {
+    samples: Vec<f32>,
+    start_ms: u64,
+    end_ms: u64,
+}
+
+#[derive(Default)]
+struct WhisperQueue {
+    jobs: VecDeque<WhisperJob>,
+    closed: bool,
+}
+
+type WhisperJobs = Arc<(Mutex<WhisperQueue>, Condvar)>;
+
+/// Spans that may pile up when decoding falls behind. Each holds up to
+/// `max_speech_duration` of audio, so this is a deliberate ceiling: drop the
+/// oldest span instead of growing memory or stalling capture.
+const WHISPER_BACKLOG: usize = 6;
+
+fn queue_whisper_segments(
     vad: &VoiceActivityDetector,
-    recognizer: &OfflineRecognizer,
-    sink: &EngineSink,
-    translate: &TranslateService,
-    utterance_id: &mut u64,
     session_samples: u64,
+    queue: &WhisperJobs,
 ) {
     while let Some(segment) = vad.front() {
         let samples = segment.samples();
         if !samples.is_empty() {
-            let stream = recognizer.create_stream();
-            stream.accept_waveform(SAMPLE_RATE as i32, samples);
-            recognizer.decode(&stream);
-            let text = stream
-                .get_result()
-                .map(|result| result.text.trim().to_string())
-                .unwrap_or_default();
-            if !text.is_empty() {
-                let end_ms = session_samples * 1000 / SAMPLE_RATE as u64;
-                let duration_ms = samples.len() as u64 * 1000 / SAMPLE_RATE as u64;
-                let start_ms = end_ms.saturating_sub(duration_ms);
-                log::info!("whisper {}–{}ms: {}", start_ms, end_ms, text);
-                sink.send(EngineEvent::Final {
-                    id: *utterance_id,
-                    text: text.clone(),
-                    start_ms,
+            let end_ms = session_samples * 1000 / SAMPLE_RATE as u64;
+            let duration_ms = samples.len() as u64 * 1000 / SAMPLE_RATE as u64;
+            push_whisper_job(
+                queue,
+                WhisperJob {
+                    samples: samples.to_vec(),
+                    start_ms: end_ms.saturating_sub(duration_ms),
                     end_ms,
-                });
-                translate.submit(*utterance_id, text, sink.clone());
-                *utterance_id += 1;
-            }
+                },
+            );
         }
         vad.pop();
     }
+}
+
+fn push_whisper_job(queue: &WhisperJobs, job: WhisperJob) {
+    let (lock, ready) = &**queue;
+    let mut state = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if state.jobs.len() >= WHISPER_BACKLOG {
+        if let Some(dropped) = state.jobs.pop_front() {
+            let seconds = dropped.end_ms.saturating_sub(dropped.start_ms) as f64 / 1000.0;
+            log::warn!("whisper: decoder fell behind; dropping the oldest {seconds:.1}s span");
+        }
+    }
+    state.jobs.push_back(job);
+    ready.notify_one();
+}
+
+fn close_whisper_queue(queue: &WhisperJobs) {
+    let (lock, ready) = &**queue;
+    let mut state = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    state.closed = true;
+    ready.notify_all();
+}
+
+/// Decode spans in order; exits once the queue is closed and empty.
+fn whisper_decode_loop(
+    recognizer: OfflineRecognizer,
+    sink: EngineSink,
+    translate: Arc<TranslateService>,
+    queue: WhisperJobs,
+) {
+    let mut utterance_id: u64 = 1;
+
+    loop {
+        let job = {
+            let (lock, ready) = &*queue;
+            let mut state = lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            loop {
+                if let Some(job) = state.jobs.pop_front() {
+                    break Some(job);
+                }
+                if state.closed {
+                    break None;
+                }
+                state = ready.wait(state).unwrap_or_else(|poisoned| poisoned.into_inner());
+            }
+        };
+        let Some(job) = job else {
+            break;
+        };
+
+        let stream = recognizer.create_stream();
+        stream.accept_waveform(SAMPLE_RATE as i32, &job.samples);
+        recognizer.decode(&stream);
+        let text = stream
+            .get_result()
+            .map(|result| result.text.trim().to_string())
+            .unwrap_or_default();
+        if !text.is_empty() {
+            log::info!("whisper {}–{}ms: {}", job.start_ms, job.end_ms, text);
+            sink.send(EngineEvent::Final {
+                id: utterance_id,
+                text: text.clone(),
+                start_ms: job.start_ms,
+                end_ms: job.end_ms,
+            });
+            translate.submit(utterance_id, text, sink.clone());
+            utterance_id += 1;
+        }
+    }
+
+    log::info!("whisper: decoder drained");
 }
 
 /* ------------------------------------------------------------------------- */

@@ -1073,6 +1073,15 @@ pnpm dlx shadcn@latest add @coss/ui
 - **已验证**：`cargo check`、`tsc -b`、`oxlint` 通过；`general` 单测覆盖字段往返与旧文件缺字段默认开启。
 - **限制**：只在正常结束一场时写，崩溃或强杀没有；没有定稿字幕的会话跳过；文件名精确到分钟，同分钟的两场会互相覆盖；失败不提示用户。
 
+### Whisper 解码与采集解耦（2026-11-27）
+
+- **问题**：`whisper_loop` 原来在采集面线程里同步解码（`drain_whisper_segments`）。一段 12–20 秒的语音要解码 5–8 秒，期间不再读采集通道（容量 96 个包，单路约 1 秒），WASAPI 缓冲溢出后音频被静默丢弃；本机日志里连续说话时字幕累计落后 5–8 秒，且滞后随时间增大。
+- **改法**（`engine.rs`）：新增 `WhisperQueue`（`Mutex<VecDeque<WhisperJob>>` + `Condvar`）和独立 `sabir-whisper-decode` 线程。采集面只喂 Silero VAD，把切好的段连同 `start_ms`/`end_ms` 入队；积压上限 `WHISPER_BACKLOG = 6`，超出丢最旧一段并记 warning；停止时 `vad.flush()` 入队、关闭队列并 join 解码线程，保证积压的句子也进库与自动笔记。
+- **分段**：`max_speech_duration` 20 秒 → 12 秒，单段解码时间可控；`min_silence_duration` 仍 0.55 秒。
+- **已验证**：`cargo check`、`cargo test --lib`（46 通过 / 6 忽略）；实机隔离 identifier 起 dev，用系统 TTS 连续说话 50 秒（不停顿）：VAD 切成 4 段（0.4–14.6 / 14.7–28.4 / 28.9–42.4 / 43.0–49.6 s），都在段尾后 3–8 秒解完，日志无 `fell behind`，停止后 `decoder drained` 并写出自动笔记；旧的同步解码在同条件曾累计落后 5–8 秒。
+- **限制**：解码慢于连续语音时字幕仍会延迟，队列满了丢最旧段（日志有 warning），不会补齐；停止要等积压解完才结束会话/写笔记，最多约一分钟。
+- **顺带观察（与本改动无关）**：全新配置目录首次冷启动时，前端可能拿到空设置（界面显示「未选择模型」），重载窗口后恢复，疑似命令调用早于 setup 完成；后续可加一次加载重试。
+
 ## 4.2 MVP 任务拆解
 
 1. **Tauri 骨架**：`tauri.conf.json`、capabilities、主窗 + 浮标、托盘、单实例、日志。
