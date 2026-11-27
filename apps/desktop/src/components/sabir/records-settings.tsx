@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useState, type Ref } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { tr } from '@/lib/i18n'
 import { isTauri } from '@/lib/engine'
 import {
@@ -20,11 +21,13 @@ type RecordsSettingsProps = {
 
 /**
  * Where recordings are written. Rust owns the folder (and creates it), so the
- * panel only edits `exportDir` and never re-reads the transcript store.
+ * panel only edits `exportDir` and `autoSaveNotes` and never re-reads the
+ * transcript store.
  */
 export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
   const [saved, setSaved] = useState<AppSettings>(DEFAULT_APP_SETTINGS)
   const [dir, setDir] = useState<string | null>(null)
+  const [autoSave, setAutoSave] = useState(true)
   const [defaultDir, setDefaultDir] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +37,7 @@ export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
       if (!alive) return
       setSaved(next)
       setDir(next.exportDir)
+      setAutoSave(next.autoSaveNotes)
     })
     return () => {
       alive = false
@@ -54,7 +58,7 @@ export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
     }
   }, [])
 
-  const dirty = dir !== saved.exportDir
+  const dirty = dir !== saved.exportDir || autoSave !== saved.autoSaveNotes
 
   useEffect(() => {
     onDirtyChange(dirty)
@@ -79,9 +83,14 @@ export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
       // Merge into the latest settings so the General page's locale/tray
       // changes are never clobbered by an older copy.
       const latest = await getAppSettings()
-      const next = await saveAppSettings({ ...latest, exportDir: dir })
+      const next = await saveAppSettings({
+        ...latest,
+        exportDir: dir,
+        autoSaveNotes: autoSave,
+      })
       setSaved(next)
       setDir(next.exportDir)
+      setAutoSave(next.autoSaveNotes)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
       throw cause
@@ -91,7 +100,25 @@ export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
   useImperativeHandle(ref, () => ({ save }))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {tr("会话结束后自动保存 Markdown 笔记")}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {tr(
+              "每次停止记录时，把这一场的原文与译文写成一份笔记；没有字幕的会话不写，手动导出仍然可用。",
+            )}
+          </p>
+        </div>
+        <Switch
+          checked={autoSave}
+          onCheckedChange={(checked: boolean) => setAutoSave(checked)}
+          aria-label={tr("会话结束后自动保存 Markdown 笔记")}
+        />
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="records-dir">{tr("记录目录")}</Label>
         <div className="flex flex-wrap items-center gap-2">
@@ -114,10 +141,10 @@ export function RecordsSettings({ onDirtyChange, ref }: RecordsSettingsProps) {
           )}
         </div>
         <p className="text-[11px] leading-4 text-muted-foreground">
-          {tr("会话记录保存在本机数据库，不会上传；导出文件默认写到这里。")}
+          {tr("会话记录保存在本机数据库，不会上传。")}
         </p>
         <p className="text-[11px] leading-4 text-muted-foreground">
-          {tr("Markdown、JSONL 与 SRT 文件保存到这里；目录不存在时会自动创建。")}
+          {tr("自动笔记与手动导出的 Markdown、JSONL、SRT 都写到这里；目录不存在时会自动创建。")}
         </p>
       </div>
 

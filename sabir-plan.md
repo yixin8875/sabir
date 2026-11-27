@@ -1063,6 +1063,16 @@ pnpm dlx shadcn@latest add @coss/ui
 - **已验证**：`tsc -b`、`cargo check`、`oxlint`（无新增 error）；浏览器预览的 `?view=caption` 布局正常。实机用系统 TTS 播放英文、`Ctrl+M` 开始记录：浮窗 `IsWindowVisible=true`、`WS_EX_TOPMOST` 且 z-order 在主窗口与录音浮标之上，`PrintWindow` 抓到主窗口推送的成句字幕；再次 `Ctrl+M` 停止后 `IsWindowVisible=false`。GDI 全屏截图抓不到透明浮窗的像素，因此用窗口属性与窗口自身捕获验证；记录页的「打开目录」与浮窗内按钮未逐一点击。
 - **限制**：浮窗只显示最近两句原文与译文加预览句，不显示问答；位置与字号存在 WebView localStorage，清空站点数据或重装后回默认；无边框与标题栏，Alt+F4 等同关开关；不抢焦点，所以不能在浮窗里输入或切换音源；Acrylic 依赖系统透明效果；macOS/Linux 未验证。
 
+### 会话结束自动落 Markdown 笔记（2026-11-27）
+
+对应记录页「把这一场留成笔记」的默认行为：
+
+- **设置**（`general.rs`、`app-settings.ts`）：`GeneralSettings` 新增 `auto_save_notes`，serde 默认 `true`（旧 `general.json` 没这个字段也按开启处理）；前端 `AppSettings.autoSaveNotes` 默认 `true`、`normalizeAppSettings` 只在显式 `false` 时关闭；记录页加开关，与导出目录一起标脏、一起合并保存（先读最新设置再写，避免覆盖其它页字段）。
+- **Rust 落盘**（`lib.rs`、`engine.rs`、`tray.rs`）：`Engine::stop()` 改为返回 `Option<i64>`，`stop_and_note()` 在其中拿会话 id 后调 `save_session_note()`；笔记目录取 `export_dir`，未设置时走 `default_export_dir`，文件名复用 `exported_name(meta, "md")` → `sabir-<日期>-<时分>.md`，内容与手动导出 Markdown 相同。关闭自动笔记、会话没有定稿字幕、目录创建或写文件失败都只记日志并跳过，不打断停止流程。
+- **三条结束路径**：停止命令（`stop_listening`）、主窗口 `CloseRequested`（先停止再按托盘设置隐藏/退出）、托盘「退出 Sabir」都走 `stop_and_note`；没有录音时 `stop()` 返回 `None`，不写文件。
+- **已验证**：`cargo check`、`tsc -b`、`oxlint` 通过；`general` 单测覆盖字段往返与旧文件缺字段默认开启。
+- **限制**：只在正常结束一场时写，崩溃或强杀没有；没有定稿字幕的会话跳过；文件名精确到分钟，同分钟的两场会互相覆盖；失败不提示用户。
+
 ## 4.2 MVP 任务拆解
 
 1. **Tauri 骨架**：`tauri.conf.json`、capabilities、主窗 + 浮标、托盘、单实例、日志。

@@ -50,6 +50,9 @@ pub struct GeneralSettings {
     /// Keep the app in the tray when the main window is closed.
     #[serde(default = "default_minimize_to_tray")]
     pub minimize_to_tray: bool,
+    /// Write a Markdown note into `export_dir` whenever a session ends.
+    #[serde(default = "default_auto_save_notes")]
+    pub auto_save_notes: bool,
 }
 
 impl Default for GeneralSettings {
@@ -58,6 +61,7 @@ impl Default for GeneralSettings {
             export_dir: None,
             locale: default_locale(),
             minimize_to_tray: default_minimize_to_tray(),
+            auto_save_notes: default_auto_save_notes(),
         }
     }
 }
@@ -67,6 +71,10 @@ fn default_locale() -> String {
 }
 
 fn default_minimize_to_tray() -> bool {
+    true
+}
+
+fn default_auto_save_notes() -> bool {
     true
 }
 
@@ -148,6 +156,7 @@ mod tests {
             export_dir: Some("  D:\\notes  ".to_string()),
             locale: "en".to_string(),
             minimize_to_tray: false,
+            auto_save_notes: false,
         }
         .normalized();
         assert_eq!(settings.export_dir.as_deref(), Some("D:\\notes"));
@@ -156,10 +165,15 @@ mod tests {
         assert_eq!(loaded.export_dir.as_deref(), Some("D:\\notes"));
         assert_eq!(loaded.locale, "en");
         assert!(!loaded.minimize_to_tray);
+        assert!(!loaded.auto_save_notes);
+        // Older files without the field keep automatic notes on.
+        fs::write(&path, r#"{"locale":"en"}"#).unwrap();
+        assert!(load(&path).auto_save_notes);
         let empty = GeneralSettings {
             export_dir: Some("   ".to_string()),
             locale: "zh-Hans".to_string(),
             minimize_to_tray: true,
+            auto_save_notes: true,
         }
         .normalized();
         assert!(empty.export_dir.is_none());

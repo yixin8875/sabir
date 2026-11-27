@@ -52,8 +52,8 @@ fn start_listening(
 }
 
 #[tauri::command]
-fn stop_listening(engine: State<'_, Engine>) {
-    engine.stop();
+fn stop_listening(app: AppHandle) {
+    stop_and_note(&app);
 }
 
 #[tauri::command]
@@ -102,21 +102,70 @@ fn export_session(
     let meta = store
         .meta(id)
         .ok_or_else(|| general::pick("找不到这场会话", "Session not found").to_string())?;
-    let slug = meta
+    let settings = general::load(&general::settings_path(&app));
+    let dir = match settings.export_dir {
+        Some(dir) if !dir.trim().is_empty() => std::path::PathBuf::from(dir),
+        _ => general::default_export_dir(&app)?,
+    };
+    let dest = dir.join(exported_name(&meta, &format));
+    let path = store.export(id, &format, &dest)?;
+    Ok(path.display().to_string())
+}
+
+/// File name for one session, e.g. `sabir-2026-11-27-2000.md`.
+fn exported_name(meta: &SessionMeta, format: &str) -> String {
+    let stamp = meta
         .started_at
         .chars()
         .take(16)
         .collect::<String>()
         .replace(' ', "-")
         .replace(':', "");
-    let settings = general::load(&general::settings_path(&app));
-    let dir = match settings.export_dir {
-        Some(dir) if !dir.trim().is_empty() => std::path::PathBuf::from(dir),
-        _ => general::default_export_dir(&app)?,
+    format!("sabir-{stamp}.{format}")
+}
+
+/// Stop the running session, if any, and write its automatic note. Every path
+/// that ends a session goes through here: the stop button, closing the window
+/// (to the tray or quitting) and the tray's Quit item.
+pub(crate) fn stop_and_note(app: &AppHandle) {
+    let Some(engine) = app.try_state::<Engine>() else {
+        return;
     };
-    let dest = dir.join(format!("sabir-{slug}.{format}"));
-    let path = store.export(id, &format, &dest)?;
-    Ok(path.display().to_string())
+    let Some(session_id) = engine.stop() else {
+        return;
+    };
+    save_session_note(app, &engine.store(), session_id);
+}
+
+/// Write the session into the export folder. Skipped when the preference is
+/// off or the session never produced a caption; a failed write is logged
+/// rather than surfaced, because the recording itself already ended cleanly.
+fn save_session_note(app: &AppHandle, store: &SessionStore, session_id: i64) {
+    let settings = general::load(&general::settings_path(app));
+    if !settings.auto_save_notes {
+        return;
+    }
+    let Some(meta) = store.meta(session_id) else {
+        return;
+    };
+    if meta.segments == 0 {
+        return;
+    }
+    let dir = match settings.export_dir {
+        Some(dir) => PathBuf::from(dir),
+        None => match general::default_export_dir(app) {
+            Ok(dir) => dir,
+            Err(err) => {
+                log::warn!("automatic note skipped: {err}");
+                return;
+            }
+        },
+    };
+    let dest = dir.join(exported_name(&meta, "md"));
+    match store.export(session_id, "md", &dest) {
+        Ok(path) => log::info!("note saved: {}", path.display()),
+        Err(err) => log::warn!("note save failed: {err}"),
+    }
 }
 
 /// The folder records land in when the user has not picked one.
@@ -711,10 +760,9 @@ pub fn run() {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     // Stop the pipeline first so the open session gets its
-                    // `ended_at` instead of staying "in progress" forever.
-                    if let Some(engine) = window.app_handle().try_state::<Engine>() {
-                        engine.stop();
-                    }
+                    // `ended_at` and its automatic note instead of staying
+                    // "in progress" forever.
+                    stop_and_note(window.app_handle());
                     let settings =
                         general::load(&general::settings_path(window.app_handle()));
                     if settings.minimize_to_tray {

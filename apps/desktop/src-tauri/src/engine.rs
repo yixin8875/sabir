@@ -272,13 +272,15 @@ impl Engine {
         Ok(())
     }
 
-    pub fn stop(&self) {
+    /// Stop the running session and return the id that was just finished, so
+    /// the caller can write its automatic note.
+    pub fn stop(&self) -> Option<i64> {
         let session = match self.session.lock() {
             Ok(mut guard) => guard.take(),
             Err(_) => None,
         };
         let Some(mut session) = session else {
-            return;
+            return None;
         };
         session.stop.store(true, Ordering::SeqCst);
         session.paused.store(false, Ordering::SeqCst);
@@ -290,6 +292,7 @@ impl Engine {
         }
         self.plugins.end_session();
         self.store.finish_session(session.session_id);
+        Some(session.session_id)
     }
 
     /// Keep the session and its transcript, but stop feeding audio to the

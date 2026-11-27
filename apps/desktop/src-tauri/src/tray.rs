@@ -58,7 +58,12 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                     log::warn!("tray: could not send settings command: {err}");
                 }
             }
-            "quit" => app.exit(0),
+            "quit" => {
+                // Quitting while recording still ends the session properly and
+                // writes its note.
+                crate::stop_and_note(app);
+                app.exit(0);
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

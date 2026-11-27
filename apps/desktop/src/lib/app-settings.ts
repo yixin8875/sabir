@@ -13,12 +13,15 @@ export type AppSettings = {
   exportDir: string | null
   locale: Locale
   minimizeToTray: boolean
+  /** Write a Markdown note into `exportDir` every time a session ends. */
+  autoSaveNotes: boolean
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   exportDir: null,
   locale: 'zh-Hans',
   minimizeToTray: true,
+  autoSaveNotes: true,
 }
 
 const STORAGE_KEY = 'sabir-app-settings'
@@ -32,6 +35,7 @@ export function normalizeAppSettings(
     exportDir: dir || null,
     locale: normalizeLocale(value?.locale),
     minimizeToTray: value?.minimizeToTray !== false,
+    autoSaveNotes: value?.autoSaveNotes !== false,
   }
 }
 
